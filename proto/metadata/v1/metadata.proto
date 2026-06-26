@@ -1,0 +1,325 @@
+syntax = "proto3";
+package metadata.v1;
+
+option go_package = "github.com/errebusorg/errebus/gen/go/metadata/v1;metadata1";
+
+import "google/api/annotations.proto";
+import "common/v1/types.proto";
+
+service MetadataService {
+  // --- File Operations ---
+  // POST: Creating a new file record
+  rpc CreateFile(CreateFileRequest) returns (CreateFileResponse) {
+    option (google.api.http) = { post: "/v1/files" body: "*" };
+  }
+  
+  // POST: Creating a new directory
+  rpc CreateDirectory(CreateDirectoryRequest) returns (CreateDirectoryResponse) {
+    option (google.api.http) = { post: "/v1/directories" body: "*" };
+  }
+  
+  // GET: Retrieving file metadata (No body)
+  rpc GetFile(GetFileRequest) returns (GetFileResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}" };
+  }
+  
+  // GET: Listing contents of a directory. Pagination handled via query params.
+  rpc ListDirectory(ListDirectoryRequest) returns (ListDirectoryResponse) {
+    option (google.api.http) = { get: "/v1/directories/{directory_id.id}/children" };
+  }
+  
+  // POST: Action endpoint for moving a file
+  rpc MoveFile(MoveFileRequest) returns (MoveFileResponse) {
+    option (google.api.http) = { post: "/v1/files/{file_id.id}/move" body: "*" };
+  }
+  
+  // PATCH: Partially updating the file (just the name)
+  rpc RenameFile(RenameFileRequest) returns (RenameFileResponse) {
+    option (google.api.http) = { patch: "/v1/files/{file_id.id}/rename" body: "*" };
+  }
+  
+  // DELETE: Removing a file completely
+  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse) {
+    option (google.api.http) = { delete: "/v1/files/{file_id.id}" };
+  }
+  
+  // GET: Retrieving statistics/metrics
+  rpc GetFileStats(GetFileStatsRequest) returns (GetFileStatsResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}/stats" };
+  }
+
+  // --- Upload Session ---
+  // POST: Creating a new upload session
+  rpc InitiateUpload(InitiateUploadRequest) returns (InitiateUploadResponse) {
+    option (google.api.http) = { post: "/v1/uploads" body: "*" };
+  }
+  
+  // POST: Committing an upload session
+  rpc FinalizeUpload(FinalizeUploadRequest) returns (FinalizeUploadResponse) {
+    option (google.api.http) = { post: "/v1/uploads/{upload_id}/finalize" body: "*" };
+  }
+  
+  // DELETE: Canceling an upload session 
+  rpc AbortUpload(AbortUploadRequest) returns (AbortUploadResponse) {
+    option (google.api.http) = { delete: "/v1/uploads/{upload_id}" };
+  }
+
+  // --- Version Management ---
+  // GET: Retrieving a list of versions
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}/versions" };
+  }
+  
+  // GET: Retrieving a specific version
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}/versions/{version_id}" };
+  }
+  
+  // POST: Action endpoint to roll back to a version
+  rpc RestoreVersion(RestoreVersionRequest) returns (RestoreVersionResponse) {
+    option (google.api.http) = { post: "/v1/files/{file_id.id}/versions/{version_id}/restore" body: "*" };
+  }
+
+  // --- Share Tokens ---
+  rpc CreateShareToken(CreateShareTokenRequest) returns (CreateShareTokenResponse) {
+    option (google.api.http) = { post: "/v1/files/{file_id.id}/share" body: "*" };
+  }
+  
+  // GET: Looking up a token's details (using the token itself as the ID)
+  rpc ResolveShareToken(ResolveShareTokenRequest) returns (ResolveShareTokenResponse) {
+    option (google.api.http) = { get: "/v1/shares/{token}" };
+  }
+  
+  // DELETE: Destroying a share link
+  rpc RevokeShareToken(RevokeShareTokenRequest) returns (RevokeShareTokenResponse) {
+    option (google.api.http) = { delete: "/v1/shares/{token}" };
+  }
+  
+  // GET: Listing all active share links for a file
+  rpc ListShareTokens(ListShareTokensRequest) returns (ListShareTokensResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}/shares" };
+  }
+
+  // --- Search Support ---
+  rpc GetChunkManifest(GetChunkManifestRequest) returns (GetChunkManifestResponse) {
+    option (google.api.http) = { get: "/v1/files/{file_id.id}/manifest" };
+  }
+}
+
+// ==========================================
+// CORE DATA MODELS
+// ==========================================
+
+// Represents the standard metadata for any file or directory
+message FileMetadata {
+  common.v1.FileID file_id = 1;
+  string filename = 2;
+  common.v1.FileID parent_directory_id = 3;
+  int64 size_bytes = 4;
+  bool is_directory = 5;
+  common.v1.UserID owner_id = 6;
+  common.v1.Timestamp created_at = 7;
+  common.v1.Timestamp updated_at = 8;
+}
+
+// Represents a pointer to a physical block of data (used in manifests)
+message ChunkRef {
+  common.v1.ChunkID chunk_id = 1;
+  int32 sequence_number = 2; // The order of this chunk in the file
+  int64 size_bytes = 3;
+  string checksum_sha256 = 4;
+}
+
+message FileVersion {
+  string version_id = 1;
+  common.v1.Timestamp created_at = 2;
+  int64 size_bytes = 3;
+  string trigger_event = 4; // e.g., "USER_UPLOAD", "SYNC_MERGE"
+}
+
+message ShareToken {
+  string token = 1;
+  common.v1.FileID file_id = 2;
+  common.v1.Timestamp expires_at = 3;
+  int32 access_count = 4;
+}
+
+// ==========================================
+// RPC REQUEST & RESPONSE MESSAGES
+// ==========================================
+
+// --- File Operations ---
+
+message CreateFileRequest {
+  common.v1.FileID parent_directory_id = 1;
+  string filename = 2;
+  int64 size_bytes = 3;
+}
+message CreateFileResponse { 
+  common.v1.FileID file_id = 1; 
+}
+
+message CreateDirectoryRequest {
+  common.v1.FileID parent_directory_id = 1;
+  string dirname = 2;
+}
+message CreateDirectoryResponse { 
+  common.v1.FileID directory_id = 1; 
+}
+
+message GetFileRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message GetFileResponse { 
+  FileMetadata metadata = 1; 
+}
+
+message ListDirectoryRequest {
+  common.v1.FileID directory_id = 1;
+  int32 limit = 2;   
+  int32 offset = 3;  
+}
+message ListDirectoryResponse { 
+  repeated FileMetadata items = 1;
+  int32 total_count = 2;
+}
+
+message MoveFileRequest {
+  common.v1.FileID file_id = 1; 
+  common.v1.FileID target_directory_id = 2; 
+}
+message MoveFileResponse { 
+  bool success = 1; 
+}
+
+message RenameFileRequest {
+  common.v1.FileID file_id = 1; 
+  string new_filename = 2;      
+}
+message RenameFileResponse { 
+  bool success = 1; 
+}
+
+message DeleteFileRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message DeleteFileResponse { 
+  bool success = 1; 
+}
+
+message GetFileStatsRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message GetFileStatsResponse { 
+  int64 total_downloads = 1;
+  common.v1.Timestamp last_accessed_at = 2;
+}
+
+// --- Upload Session ---
+
+message AbortUploadRequest {
+  string upload_id = 1; 
+}
+message AbortUploadResponse { 
+  bool success = 1; 
+}
+
+// --- Version Management ---
+
+message ListVersionsRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message ListVersionsResponse { 
+  repeated FileVersion versions = 1; 
+}
+
+message GetVersionRequest {
+  common.v1.FileID file_id = 1; 
+  string version_id = 2;        
+}
+message GetVersionResponse { 
+  FileVersion version = 1; 
+}
+
+message RestoreVersionRequest {
+  common.v1.FileID file_id = 1; 
+  string version_id = 2;        
+}
+message RestoreVersionResponse { 
+  bool success = 1; 
+}
+
+// --- Share Tokens ---
+
+message CreateShareTokenRequest {
+  common.v1.FileID file_id = 1; 
+  int32 expires_in_seconds = 2; 
+}
+message CreateShareTokenResponse { 
+  string token = 1; 
+}
+
+message ResolveShareTokenRequest {
+  string token = 1; 
+}
+message ResolveShareTokenResponse { 
+  common.v1.FileID file_id = 1; 
+}
+
+message RevokeShareTokenRequest { 
+  string token = 1; 
+}
+message RevokeShareTokenResponse { 
+  bool success = 1; 
+}
+
+message ListShareTokensRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message ListShareTokensResponse { 
+  repeated ShareToken tokens = 1; 
+}
+
+// --- Search / Manifest Support ---
+
+message GetChunkManifestRequest { 
+  common.v1.FileID file_id = 1; 
+}
+message GetChunkManifestResponse { 
+  common.v1.FileID file_id = 1;
+  repeated ChunkRef chunks = 2; // Using your newly defined ChunkRef!
+  int64 total_size_bytes = 3;
+}
+
+// InitiateUpload
+
+message InitiateUploadRequest {
+  string parent_path = 1;        // directory path (e.g., "/documents")
+  string file_name = 2;          // e.g., "report.pdf"
+  int64 file_size = 3;           // total file size in bytes
+  string mime_type = 4;          // detected MIME type
+  common.v1.UserID user_id = 5;            // from gateway metadata
+}
+
+message InitiateUploadResponse {
+  string upload_session_id = 1;
+  common.v1.FileID file_id = 2;
+  int32 expected_chunk_count = 3;
+  int64 chunk_size_avg = 4;      // suggested average chunk size (2MB)
+}
+
+
+// FinalizeUpload
+
+message FinalizeUploadRequest {
+  string upload_id = 1;
+  repeated ChunkRef chunks = 2;  // ordered list of chunk IDs and their metadata
+  string file_checksum = 3;      // BLAKE3 of entire file content
+}
+
+message FinalizeUploadResponse {
+  common.v1.FileID file_id = 1;
+  int32 version_number = 2;
+  int64 new_storage_bytes = 3;   // only new bytes stored (after dedup)
+  int64 total_file_size = 4;
+}
