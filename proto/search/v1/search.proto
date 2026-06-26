@@ -1,0 +1,76 @@
+syntax = "proto3";
+package search.v1;
+
+option go_package = "github.com/errebusorg/errebus/gen/go/search/v1;searchv1";
+
+import "google/api/annotations.proto";
+import "common/v1/types.proto";
+
+
+
+service SearchService {
+  
+  // GET: Public endpoint for clients to search their files.
+  rpc SearchFiles(SearchFilesRequest) returns (SearchFilesResponse) {
+    option (google.api.http) = {
+      get: "/v1/search"
+    };
+  }
+
+  // INTERNAL ONLY: Called by NATS consumer when a file is uploaded/modified.
+  rpc IndexFile(IndexFileRequest) returns (IndexFileResponse);        
+  
+  // INTERNAL ONLY: Called by NATS consumer when a file is deleted.
+  rpc RemoveFromIndex(RemoveFromIndexRequest) returns (RemoveFromIndexResponse);
+}
+
+// SearchFiles
+
+message SearchFilesRequest {
+  common.v1.UserID user_id = 1;             // only return files the user can access
+  string query = 2;               // search query string
+  string mime_type_filter = 3;    // optional: filter by MIME type
+  int32 page = 4;                 // pagination page (1-indexed)
+  int32 page_size = 5;            // items per page (default 20, max 100)
+  string sort_by = 6;             // "name", "size", "updated_at" (default: relevance)
+  string sort_order = 7;          // "asc" or "desc"
+}
+
+message SearchFilesResponse {
+  repeated SearchResult results = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message SearchResult {
+  string file_id = 1;
+  string name = 2;
+  string path = 3;
+  string mime_type = 4;
+  int64 size_bytes = 5;
+  string tier = 6;
+  float relevance_score = 7;
+  string updated_at = 8;
+}
+
+message IndexFileRequest {
+  common.v1.FileID file_id = 1;
+  common.v1.UserID owner_id = 2;  // Required so the search engine knows who can see it
+  string filename = 3;
+  
+  // The actual text content, tags, or OCR output extracted by your worker
+  string content_payload = 4; 
+}
+
+message IndexFileResponse {
+  bool success = 1;
+}
+
+message RemoveFromIndexRequest {
+  common.v1.FileID file_id = 1;
+}
+
+message RemoveFromIndexResponse {
+  bool success = 1;
+}
