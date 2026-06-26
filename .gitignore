@@ -1,1 +1,20 @@
 .DS_STORE
+specs/implementation_plan.md
+gen/
+
+# Application data
+data/
+
+# Environment variables
+.env
+.env.*
+
+# Compiled binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
