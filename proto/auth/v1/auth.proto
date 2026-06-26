@@ -1,0 +1,315 @@
+syntax = "proto3";
+package auth.v1;
+
+option go_package = "github.com/errebusorg/errebus/gen/go/auth/v1;authv1";
+
+import "common/v1/types.proto";
+import "google/api/annotations.proto";
+
+service AuthService {
+  // --- Authentication methods ---
+  // POST: Creating a new user
+  rpc Register(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = { post: "/v1/auth/register" body: "*" };
+  }
+  
+  // POST: Sending a token to be verified
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse) {
+    option (google.api.http) = { post: "/v1/auth/verify-email" body: "*" };
+  }
+  
+  // POST: Creating a new logged-in-session
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = { post: "/v1/auth/login" body: "*" };
+  }
+  
+  // POST: Creating a new token from an old one
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = { post: "/v1/auth/refresh" body: "*" };
+  }
+  
+  // POST: Terminating a session
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = { post: "/v1/auth/logout" body: "*" };
+  }
+  
+  // POST: Checking state
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
+    option (google.api.http) = { post: "/v1/auth/validate" body: "*" };
+  }
+
+  // --- Password Management ---
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {
+    option (google.api.http) = { post: "/v1/auth/password/request-reset" body: "*" };
+  }
+  
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse) {
+    option (google.api.http) = { post: "/v1/auth/password/reset" body: "*" };
+  }
+  
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
+    option (google.api.http) = { post: "/v1/auth/password/change" body: "*" };
+  }
+
+  // --- User Management ---
+  // GET: Retrieving data.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (google.api.http) = { get: "/v1/users/{user_id.id}" };
+  }
+  
+  // PATCH: Updating an existing user.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
+    option (google.api.http) = { patch: "/v1/users/{user_id.id}" body: "*" };
+  }
+  
+  // GET: Listing resources. Pagination/filters will automatically become query parameters.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = { get: "/v1/users" };
+  }
+  
+  // POST: Performing a specific action on a user
+  rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse) {
+    option (google.api.http) = { post: "/v1/users/{user_id.id}/suspend" body: "*" };
+  }
+  
+  // DELETE: Removing a resource. No body allowed!
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
+    option (google.api.http) = { delete: "/v1/users/{user_id.id}" };
+  }
+  
+  // PATCH: Partially updating a specific attribute of a user.
+  rpc UpdateQuota(UpdateQuotaRequest) returns (UpdateQuotaResponse) {
+    option (google.api.http) = { patch: "/v1/users/{user_id.id}/quota" body: "*" };
+  }
+
+  // --- Permission / ACL ---
+  // POST: Submitting an action/check
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse) {
+    option (google.api.http) = { post: "/v1/permissions/check" body: "*" };
+  }
+  
+  // POST: Creating a new permission grant
+  rpc GrantPermission(GrantPermissionRequest) returns (GrantPermissionResponse) {
+    option (google.api.http) = { post: "/v1/permissions/grant" body: "*" };
+  }
+  
+  // POST: You could also use DELETE here, but if the request requires multiple fields 
+  // (like both user_id and file_id), POST is often easier to structure.
+  rpc RevokePermission(RevokePermissionRequest) returns (RevokePermissionResponse) {
+    option (google.api.http) = { post: "/v1/permissions/revoke" body: "*" };
+  }
+  
+  // GET: Retrieving a list of permissions.
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse) {
+    option (google.api.http) = { get: "/v1/permissions" };
+  }
+}
+
+// A standard representation of a user profile
+message User {
+  common.v1.UserID id = 1;
+  string email = 2;
+  string username = 3;
+  bool is_suspended = 4;
+  common.v1.Timestamp created_at = 5;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message LogoutRequest {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool is_valid = 1;
+  common.v1.UserID user_id = 2;
+}
+
+
+// Register
+message RegisterRequest {
+  string email = 1; // must be valid email format
+  string username = 2; // 3-100 chars, alphanumeric + underscores
+  string password = 3; // min 8 chars, must contain uppercase, lowercase, digit       
+}
+
+message RegisterResponse {
+  common.v1.UserID user_id = 1;
+  string message = 2; // "Verification email sent to <email>"
+}
+
+// VerifyEmail
+message VerifyEmailRequest {
+  string token = 1; // the token from the verification email link
+}
+
+message VerifyEmailResponse {
+  string message = 1; // "Email verified successfully"
+}
+
+// Login
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string device_name = 3; // optional — e.g., "MacBook Pro", "Desktop-Home"
+}
+
+message LoginResponse {
+  string access_token = 1;       // JWT, 24h TTL
+  string refresh_token = 2;      // opaque token, 30d TTL
+  User user = 3;                 // user profile data
+}
+
+
+//  RequestPasswordReset
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {
+  string message = 1; // Always "If an account with that email exists, a reset link has been sent."
+}
+
+
+// ResetPassword
+message ResetPasswordRequest {
+  string token = 1; // from the password reset email link
+  string new_password = 2; // min 8 chars, same validation as Register
+}
+
+message ResetPasswordResponse {
+  string message = 1;   // "Password reset successfully"
+}
+
+// ChangePassword (authenticated)
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {
+  string message = 1;
+}
+
+
+// CheckPermission
+message CheckPermissionRequest {
+  common.v1.UserID user_id = 1;
+  common.v1.FileID file_id = 2;
+  int32 required_level = 3; // the minimum permission
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+  int32 actual_level = 2;   // the user's actual permission level on this file
+}
+
+
+// GrantPermission
+message GrantPermissionRequest {
+  string granter_user_id = 1;    // who is granting
+  string grantee_user_id = 2;    // who is receiving
+  string file_id = 3;
+  int32 permission_level = 4;    // 1-5
+}
+
+message GrantPermissionResponse {
+  string acl_id = 1;
+}
+
+message RevokePermissionRequest {
+  common.v1.UserID revoker_user_id = 1;
+  common.v1.UserID revoked_user_id = 2;
+  common.v1.FileID file_id = 3;
+}
+
+message RevokePermissionResponse {
+  bool success = 1;
+}
+
+message ListPermissionsRequest {
+  common.v1.FileID file_id = 1;
+}
+
+message ListPermissionsResponse {
+  repeated PermissionRecord permissions = 1;
+}
+
+message PermissionRecord {
+  common.v1.UserID user_id = 1;
+  int32 permission_level = 2;
+}
+
+
+message GetUserRequest {
+  common.v1.UserID user_id = 1; // Pulled from the URL path
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message UpdateUserRequest {
+  common.v1.UserID user_id = 1; // Pulled from the URL path
+  string username = 2; 
+  string profile_picture_url = 3;
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+// For GET /v1/users
+message ListUsersRequest {
+  // Since there is no body and no path variables, these become URL query parameters:
+  // e.g., /v1/users?limit=50&offset=0
+  int32 limit = 1; 
+  int32 offset = 2;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+}
+
+message SuspendUserRequest {
+  common.v1.UserID user_id = 1;
+  string reason = 2; // e.g., "Violation of TOS"
+}
+
+message SuspendUserResponse {
+  bool success = 1;
+}
+
+message DeleteUserRequest {
+  common.v1.UserID user_id = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+}
+
+message UpdateQuotaRequest {
+  common.v1.UserID user_id = 1;
+  int64 new_quota_bytes = 2; // Sent in the JSON body
+}
+
+message UpdateQuotaResponse {
+  bool success = 1;
+}
