@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+// The common.v1 package contains shared, domain-agnostic types used across all Errebus services.
+package common.v1;
+
+// Generated Go code is explicitly directed to the gen/ directory.
+option go_package = "github.com/yourorg/yourrepo/gen/go/common/v1;commonv1";
+
+import "google/protobuf/timestamp.proto";
+
+// FileID represents a unique identifier for a file within the system.
+// Strongly typing this prevents accidentally passing a UserID or ChunkID into file operations.
+message FileID {
+  string id = 1;
+}
+
+// ChunkID represents a globally unique identifier for a specific binary block of a file.
+// Used by the chunk and metadata services to map logical files to physical storage blobs.
+message ChunkID {
+  string id = 1;
+}
+
+// UserID represents a unique identifier for an authenticated user account.
+// Used across auth, metadata, and sync boundaries for ownership validation and access control.
+message UserID {
+  string id = 1;
+}
+
+// DeviceID represents a unique identifier for a specific hardware client.
+// Used by the sync and auth services to manage session state and device-specific sync cursors.
+message DeviceID {
+  string id = 1;
+}
+
+// Timestamp is a domain-specific wrapper around the standard Google protobuf Timestamp.
+// Standardizes time representation across all cross-service communications and events.
+message Timestamp {
+  google.protobuf.Timestamp time = 1;
+}

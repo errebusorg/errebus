@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+// The common.v1 package contains shared, domain-agnostic types used across all Errebus services.
+package common.v1;
+
+// Generated Go code is explicitly directed to the gen/ directory.
+option go_package = "github.com/yourorg/yourrepo/gen/go/common/v1;commonv1";
+
+// ErrebusErrorCode defines the standard set of application-level error states.
+// By centralizing these, any service can return a domain-specific error that clients understand.
+enum ErrebusErrorCode {
+  // ERREBUS_ERROR_CODE_UNSPECIFIED is the default, zero-value fallback.
+  ERREBUS_ERROR_CODE_UNSPECIFIED = 0;
+  
+  // ERREBUS_ERROR_CODE_UNAUTHORIZED indicates missing, expired, or invalid authentication tokens.
+  ERREBUS_ERROR_CODE_UNAUTHORIZED = 1;
+  
+  // ERREBUS_ERROR_CODE_FILE_NOT_FOUND indicates a requested resource (metadata or chunk) does not exist.
+  ERREBUS_ERROR_CODE_FILE_NOT_FOUND = 2;
+  
+  // ERREBUS_ERROR_CODE_CHUNK_CORRUPT indicates a cryptographic hash mismatch during data transfer.
+  ERREBUS_ERROR_CODE_CHUNK_CORRUPT = 3;
+  
+  // ERREBUS_ERROR_CODE_QUOTA_EXCEEDED indicates a user attempt to upload data beyond their tier limits.
+  ERREBUS_ERROR_CODE_QUOTA_EXCEEDED = 4;
+  
+  // ERREBUS_ERROR_CODE_CONFLICT indicates a synchronization collision or concurrent modification failure.
+  ERREBUS_ERROR_CODE_CONFLICT = 5;
+}
