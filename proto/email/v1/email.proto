@@ -1,0 +1,43 @@
+syntax = "proto3";
+package email.v1;
+
+option go_package = "github.com/errebusorg/errebus/gen/go/email/v1;emailv1";
+
+import "common/v1/types.proto";
+import "google/api/annotations.proto";
+
+service EmailService {
+  // INTERNAL ONLY: Sends a single transactional email.
+  rpc SendEmail(SendEmailRequest) returns (SendEmailResponse);
+  
+  // INTERNAL ONLY: Sends multiple emails in a single gRPC call (useful for admin notifications).
+  rpc SendBatchEmail(SendBatchEmailRequest) returns (SendBatchEmailResponse);
+}
+
+// SendEmail
+message SendEmailRequest {
+  string to_email = 1;            // recipient email address
+  string to_name = 2;             // recipient display name (optional)
+  string template = 3;            // template identifier
+  map<string, string> data = 4;   // template variables
+}
+
+message SendEmailResponse {
+  bool success = 1;
+  string message_id = 2;          // SMTP message ID for tracking
+  string error = 3;               // error message if failed
+}
+
+message SendBatchEmailRequest {
+  // A simple array of the single-email requests
+  repeated SendEmailRequest emails = 1;
+}
+
+message SendBatchEmailResponse {
+  int32 successful_count = 1;
+  int32 failed_count = 2;
+  
+  // If some fail, the calling service needs to know *which* ones failed 
+  // so it can retry them or flag those users in the database.
+  repeated string failed_recipient_emails = 3;
+}
