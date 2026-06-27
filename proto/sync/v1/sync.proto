@@ -21,7 +21,7 @@ service SyncService {
   rpc GetChanges(GetChangesRequest) returns (GetChangesResponse);
 
   // Initiates a long-running, bidirectional sync session between host and client
-  rpc SyncSession(stream SyncMessage) returns (stream SyncMessage);
+  rpc SyncSession(stream SyncSessionRequest) returns (stream SyncSessionResponse);
 
   // Returns all unresolved or historical conflict rows for a user's file space
   rpc ListConflicts(ListConflictsRequest) returns (ListConflictsResponse);
@@ -97,15 +97,20 @@ message GetChangesResponse {
   int64 new_cursor = 2; // Advanced position value client should persist next
 }
 
-// Multiplexed packet framing used inside the bi-directional stream pipeline
-message SyncMessage {
+message SyncSessionRequest {
   string stream_session_id = 1;
   oneof payload {
     ChangeEvent change = 2;
     string heartbeat = 3;
   }
 }
-
+message SyncSessionResponse {
+  string stream_session_id = 1;
+  oneof payload {
+    ChangeEvent change = 2;
+    string heartbeat = 3;
+  }
+}
 // ============================================================================
 // CONFLICT MESSAGES
 // ============================================================================
