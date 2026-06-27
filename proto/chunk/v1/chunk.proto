@@ -1,0 +1,216 @@
+syntax = "proto3";
+
+package chunk.v1;
+
+import "common/v1/types.proto";
+
+option go_package = "github.com/errebusorg/errebus/gen/go/chunk/v1;chunkv1";
+
+// Chunk Service managing chunk lifecycle, storage, and deduplication
+service ChunkService {
+  // Uploads a chunk as a stream of header followed by sequential data frames
+  rpc StoreChunk(stream StoreChunkRequest) returns (StoreChunkResponse);
+
+  // Queries the server to see which chunks are missing before sending data
+  rpc NegotiateUpload(NegotiateUploadRequest) returns (NegotiateUploadResponse);
+
+  // Downloads a chunk as a stream starting with metadata then data frames
+  rpc FetchChunk(FetchChunkRequest) returns (stream FetchChunkResponse);
+
+  // Retrieves operational metadata and access stats for a specific chunk
+  rpc GetChunkInfo(GetChunkInfoRequest) returns (GetChunkInfoResponse);
+
+  // Retrieves operational metadata for a batch of chunk IDs
+  rpc BatchGetChunkInfo(BatchGetChunkInfoRequest) returns (BatchGetChunkInfoResponse);
+
+  // Increments the manifest reference count to protect a chunk from GC
+  rpc IncrementRef(IncrementRefRequest) returns (IncrementRefResponse);
+
+  // Decrements the manifest reference count when a chunk is unlinked
+  rpc DecrementRef(DecrementRefRequest) returns (DecrementRefResponse);
+
+  // Admin-only RPC to permanently purge chunks with zero references
+  rpc RunGC(RunGCRequest) returns (RunGCResponse);
+
+  // Moves a chunk to a different storage tier (Hot, Warm, Cold)
+  rpc MigrateChunk(MigrateChunkRequest) returns (MigrateChunkResponse);
+}
+
+enum StorageTier {
+  STORAGE_TIER_UNSPECIFIED = 0;
+  STORAGE_TIER_HOT = 1;
+  STORAGE_TIER_WARM = 2;
+  STORAGE_TIER_COLD = 3;
+}
+
+enum CompressionAlgorithm {
+  COMPRESSION_ALGORITHM_UNSPECIFIED = 0;
+  COMPRESSION_ALGORITHM_NONE = 1;
+  COMPRESSION_ALGORITHM_ZSTD_FAST = 2;
+  COMPRESSION_ALGORITHM_ZSTD_MAX = 3;
+}
+
+// ============================================================================
+// UPLOAD MESSAGES
+// ============================================================================
+
+message StoreChunkData {
+  bytes data = 1;
+}
+
+// Request to store a chunk via a stream of header followed by data
+message StoreChunkRequest {
+  oneof payload {
+    StoreChunkHeader header = 1;
+    StoreChunkData data = 2;
+  }
+}
+
+// Metadata describing the chunk being uploaded
+message StoreChunkHeader {
+  common.v1.ChunkID chunk_id = 1; // Expected BLAKE3 content hash
+  uint64 size_bytes = 2; // Total chunk size
+  string mime_type = 3; // MIME type for compressibility checks
+  CompressionAlgorithm compression = 4; // Pre-applied compression
+}
+
+// Response returned after the upload stream finishes
+message StoreChunkResponse {
+  common.v1.ChunkID chunk_id = 1; // Stored chunk identifier
+  bool already_existed = 2; // True if upload was skipped due to dedup
+  string etag = 3; // Backend-generated integrity tag
+}
+
+// Request to negotiate deduplication before uploading
+message NegotiateUploadRequest {
+  repeated common.v1.ChunkID chunk_ids = 1; // Client-computed BLAKE3 hashes
+}
+
+// Response detailing which chunks need uploading
+message NegotiateUploadResponse {
+  repeated common.v1.ChunkID missing = 1; // Chunks missing on the backend
+  repeated common.v1.ChunkID existing = 2; // Chunks already stored
+}
+
+// ============================================================================
+// DOWNLOAD MESSAGES
+// ============================================================================
+
+message FetchChunkRequest {
+  common.v1.ChunkID chunk_id = 1; // ID of the chunk to retrieve
+}
+
+// Streamed chunk download response (First message is Header, rest are Data)
+message FetchChunkResponse {
+  oneof payload {
+    FetchChunkHeader header = 1;
+    FetchChunkData data = 2;
+  }
+}
+
+// Metadata sent before the chunk data stream starts
+message FetchChunkHeader {
+  common.v1.ChunkID chunk_id = 1; // Unique BLAKE3 identifier
+  uint64 size_bytes = 2; // Total chunk size
+  StorageTier tier = 3; // Current storage tier
+  CompressionAlgorithm compression = 4; // Active storage compression
+  uint32 crc32c = 5; // CRC32c checksum for verification
+}
+
+message FetchChunkData {
+  bytes data = 1; // Streamed frame of chunk data
+}
+
+// ============================================================================
+// CHUNK METADATA
+// ============================================================================
+
+message GetChunkInfoRequest {
+  common.v1.ChunkID chunk_id = 1;
+}
+
+// Metadata summary for a single chunk
+message GetChunkInfoResponse {
+  bool exists = 1; // False if chunk is missing
+  uint64 size_bytes = 2; // Total chunk size
+  StorageTier tier = 3; // Current storage tier
+  CompressionAlgorithm compression = 4; // Active compression algorithm
+  uint32 crc32c = 5; // CRC32C checksum
+  int32 ref_count = 6; // Manifest references to this chunk
+  common.v1.Timestamp created_at = 7; // Storage timestamp
+  common.v1.Timestamp last_accessed_at = 8; // Most recent read timestamp
+  uint64 access_count = 9; // Lifetime read count
+}
+
+message BatchGetChunkInfoRequest {
+  repeated common.v1.ChunkID chunk_ids = 1;
+}
+
+// Metadata block used within batch responses
+message ChunkInfo {
+  common.v1.ChunkID chunk_id = 1;
+  bool exists = 2;
+  uint64 size_bytes = 3;
+  StorageTier tier = 4;
+  CompressionAlgorithm compression = 5;
+  uint32 crc32c = 6;
+  int32 ref_count = 7;
+  common.v1.Timestamp created_at = 8;
+  common.v1.Timestamp last_accessed_at = 9;
+  uint64 access_count = 10;
+}
+
+message BatchGetChunkInfoResponse {
+  repeated ChunkInfo chunks = 1;
+}
+
+// ============================================================================
+// REFERENCE COUNTING
+// ============================================================================
+
+message IncrementRefRequest {
+  common.v1.ChunkID chunk_id = 1;
+}
+
+message IncrementRefResponse {
+  int32 ref_count = 1; // Updated reference count
+}
+
+message DecrementRefRequest {
+  common.v1.ChunkID chunk_id = 1;
+}
+
+message DecrementRefResponse {
+  int32 ref_count = 1; // Updated reference count
+}
+
+// ============================================================================
+// GARBAGE COLLECTION
+// ============================================================================
+
+// Admin request to purge chunks with zero references
+message RunGCRequest {}
+
+// Summary of the completed garbage collection run
+message RunGCResponse {
+  uint64 chunks_deleted = 1; // Total permanently deleted chunks
+  uint64 bytes_reclaimed = 2; // Total reclaimed storage space
+  uint64 chunks_scanned = 3; // Total chunks scanned during GC
+}
+
+// ============================================================================
+// TIER MIGRATION
+// ============================================================================
+
+// Internal request to change a chunk's storage tier
+message MigrateChunkRequest {
+  common.v1.ChunkID chunk_id = 1;
+  StorageTier target_tier = 2; // Desired storage tier destination
+}
+
+// Result of the migration operation
+message MigrateChunkResponse {
+  StorageTier previous_tier = 1;
+  StorageTier current_tier = 2;
+  bool migrated = 3; // False if chunk was already in target tier
+}
