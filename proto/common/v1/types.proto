@@ -4,7 +4,7 @@ syntax = "proto3";
 package common.v1;
 
 // Generated Go code is explicitly directed to the gen/ directory.
-option go_package = "github.com/yourorg/yourrepo/gen/go/common/v1;commonv1";
+option go_package = "github.com/errebusorg/errebus/gen/go/common/v1;commonv1";
 
 import "google/protobuf/timestamp.proto";
 
