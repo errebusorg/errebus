@@ -1,4 +1,4 @@
-# NimbusFS — Complete Project Specification
+# Errebus — Complete Project Specification
 
 > **Version:** 1.0  
 > **Date:** 2026-06-25  
@@ -46,9 +46,10 @@
 
 ## 1. Project Overview
 
-**NimbusFS** is a self-hostable, polyglot (Go + Rust) cloud storage platform that provides S3-class storage intelligence — smart tiering, chunk-level deduplication, content-addressed storage — behind a first-class native desktop interface built in Rust with iced.
+**Errebus** is a self-hostable, polyglot (Go + Rust) cloud storage platform that provides S3-class storage intelligence — smart tiering, chunk-level deduplication, content-addressed storage — behind a first-class native desktop interface built in Rust with iced.
 
 It is simultaneously:
+
 - **A consumer product** — personal/organizational cloud storage with a polished native UI, background sync, and OS notifications.
 - **A developer primitive** — exposes a clean REST/JSON API that any tool can integrate with.
 
@@ -77,38 +78,38 @@ It is simultaneously:
 
 ## 2. Technology Stack
 
-| Concern | Technology | Version/Notes |
-|---|---|---|
-| Backend language | **Go** | All 9 services, all tooling |
-| Desktop client language | **Rust** | `iced` with `tokio` feature flag |
-| Internal RPC | **gRPC + Protobuf** | All service-to-service calls |
-| Async messaging | **NATS JetStream** | Sole message broker; replaces Kafka entirely |
-| HTTP layer | **net/http + chi router** | API Gateway only |
-| gRPC translation | **grpc-gateway** (CRUD) + **hand-rolled** (streaming) | Hybrid approach |
-| Proto tooling | **buf** | Lint, breaking-change detection, registry |
-| Metadata database | **PostgreSQL 16** | Metadata + Auth/IAM service |
-| Chunk index (single-node) | **BadgerDB v4** | Chunk Engine local index |
-| Desktop local state | **SQLite** | Client-side manifest, sync state, chunk progress |
-| Rate limiting | **golang.org/x/time/rate** (single gateway) / **go-redis-rate** (multi-replica) | Token bucket per user |
-| Email sending | **SMTP** (net/smtp or go-mail/mail) | User creation confirmation, password reset |
-| Observability | **OpenTelemetry** | Traces + metrics + logs |
-| Trace backend | **Jaeger** | all-in-one image for local dev |
-| Metrics backend | **Prometheus** | Scraping OTEL exporter |
-| Logs backend | **Loki** (optional) | Structured JSON logs with trace correlation |
-| Local dev orchestration | **Docker Compose** | All services + infra |
-| Hash algorithm (CAS) | **BLAKE3** | `zeebo/blake3` Go package |
-| Chunking algorithm | **FastCDC** | `jotfs/fastcdc-go` Go package |
-| Compression | **zstd** | `klauspost/compress/zstd` Go package |
-| File type detection | **gabriel-vasile/mimetype** | Magic byte sniffing for compressibility |
-| File watching (client) | **notify** crate | Rust; abstracts inotify/FSEvents/ReadDirectoryChanges |
-| HTTP client (desktop) | **reqwest** | Rust; async HTTP |
-| Notifications (desktop) | **notify-rust** crate | Cross-platform OS notifications |
+| Concern                   | Technology                                                                      | Version/Notes                                         |
+| ------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Backend language          | **Go**                                                                          | All 9 services, all tooling                           |
+| Desktop client language   | **Rust**                                                                        | `iced` with `tokio` feature flag                      |
+| Internal RPC              | **gRPC + Protobuf**                                                             | All service-to-service calls                          |
+| Async messaging           | **NATS JetStream**                                                              | Sole message broker; replaces Kafka entirely          |
+| HTTP layer                | **net/http + chi router**                                                       | API Gateway only                                      |
+| gRPC translation          | **grpc-gateway** (CRUD) + **hand-rolled** (streaming)                           | Hybrid approach                                       |
+| Proto tooling             | **buf**                                                                         | Lint, breaking-change detection, registry             |
+| Metadata database         | **PostgreSQL 16**                                                               | Metadata + Auth/IAM service                           |
+| Chunk index (single-node) | **BadgerDB v4**                                                                 | Chunk Engine local index                              |
+| Desktop local state       | **SQLite**                                                                      | Client-side manifest, sync state, chunk progress      |
+| Rate limiting             | **golang.org/x/time/rate** (single gateway) / **go-redis-rate** (multi-replica) | Token bucket per user                                 |
+| Email sending             | **SMTP** (net/smtp or go-mail/mail)                                             | User creation confirmation, password reset            |
+| Observability             | **OpenTelemetry**                                                               | Traces + metrics + logs                               |
+| Trace backend             | **Jaeger**                                                                      | all-in-one image for local dev                        |
+| Metrics backend           | **Prometheus**                                                                  | Scraping OTEL exporter                                |
+| Logs backend              | **Loki** (optional)                                                             | Structured JSON logs with trace correlation           |
+| Local dev orchestration   | **Docker Compose**                                                              | All services + infra                                  |
+| Hash algorithm (CAS)      | **BLAKE3**                                                                      | `zeebo/blake3` Go package                             |
+| Chunking algorithm        | **FastCDC**                                                                     | `jotfs/fastcdc-go` Go package                         |
+| Compression               | **zstd**                                                                        | `klauspost/compress/zstd` Go package                  |
+| File type detection       | **gabriel-vasile/mimetype**                                                     | Magic byte sniffing for compressibility               |
+| File watching (client)    | **notify** crate                                                                | Rust; abstracts inotify/FSEvents/ReadDirectoryChanges |
+| HTTP client (desktop)     | **reqwest**                                                                     | Rust; async HTTP                                      |
+| Notifications (desktop)   | **notify-rust** crate                                                           | Cross-platform OS notifications                       |
 
 ---
 
 ## 3. Service Architecture Overview
 
-NimbusFS consists of **9 Go microservices** (8 original + 1 Email Service):
+Errebus consists of **9 Go microservices** (8 original + 1 Email Service):
 
 ```
 ┌──────────────┐
@@ -158,12 +159,12 @@ NimbusFS consists of **9 Go microservices** (8 original + 1 Email Service):
 ## 4. Proto File Structure & Rules
 
 ```
-nimbus/
+errebus/
   proto/
     common/
       v1/
         types.proto          # FileID, ChunkID, UserID, DeviceID, Timestamp — shared types
-        errors.proto         # Domain error codes (NimbusErrorCode enum)
+        errors.proto         # Domain error codes (ErrebusErrorCode enum)
     metadata/
       v1/
         metadata.proto       # File CRUD, upload session, share tokens, versions
@@ -267,13 +268,13 @@ The only service exposed to the public internet. Terminates TLS, validates JWTs,
 
 ### Routing Strategy
 
-| Route Type | Strategy |
-|---|---|
-| CRUD metadata endpoints | `grpc-gateway` auto-generated from proto annotations |
-| File upload / download | Hand-rolled translation (streaming needs precise control) |
-| Auth routes (`/auth/*`) | Hand-rolled; some routes skip JWT validation |
-| Share routes (`/share/*`) | Hand-rolled; skip JWT validation entirely |
-| SSE endpoint (`/events`) | Hand-rolled; holds open HTTP connection, forwards NATS events |
+| Route Type                | Strategy                                                      |
+| ------------------------- | ------------------------------------------------------------- |
+| CRUD metadata endpoints   | `grpc-gateway` auto-generated from proto annotations          |
+| File upload / download    | Hand-rolled translation (streaming needs precise control)     |
+| Auth routes (`/auth/*`)   | Hand-rolled; some routes skip JWT validation                  |
+| Share routes (`/share/*`) | Hand-rolled; skip JWT validation entirely                     |
+| SSE endpoint (`/events`)  | Hand-rolled; holds open HTTP connection, forwards NATS events |
 
 ### Rate Limiting
 
@@ -285,22 +286,22 @@ The only service exposed to the public internet. Terminates TLS, validates JWTs,
 
 ### Configuration (Environment Variables)
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `GATEWAY_PORT` | int | `8080` | HTTP listen port |
-| `GATEWAY_TLS_CERT` | string | `""` | Path to TLS certificate file |
-| `GATEWAY_TLS_KEY` | string | `""` | Path to TLS key file |
-| `GATEWAY_JWT_SECRET` | string | *required* | HMAC-SHA256 secret for JWT validation |
-| `GATEWAY_RATE_LIMIT_BURST` | int | `100` | Max burst requests per user |
-| `GATEWAY_RATE_LIMIT_SUSTAINED` | float | `50.0` | Sustained requests/sec per user |
-| `AUTH_SERVICE_ADDR` | string | `auth-svc:9001` | gRPC address of Auth/IAM service |
-| `METADATA_SERVICE_ADDR` | string | `metadata-svc:9002` | gRPC address of Metadata service |
-| `CHUNK_SERVICE_ADDR` | string | `chunk-svc:9003` | gRPC address of Chunk Engine |
-| `SYNC_SERVICE_ADDR` | string | `sync-svc:9004` | gRPC address of Sync service |
-| `SEARCH_SERVICE_ADDR` | string | `search-svc:9005` | gRPC address of Search service |
-| `TIER_SERVICE_ADDR` | string | `tier-svc:9006` | gRPC address of Tier Manager |
-| `NATS_URL` | string | `nats://nats:4222` | NATS server URL (for SSE event forwarding) |
-| `OTEL_EXPORTER_ENDPOINT` | string | `otel-collector:4318` | OTEL collector address |
+| Variable                       | Type   | Default               | Description                                |
+| ------------------------------ | ------ | --------------------- | ------------------------------------------ |
+| `GATEWAY_PORT`                 | int    | `8080`                | HTTP listen port                           |
+| `GATEWAY_TLS_CERT`             | string | `""`                  | Path to TLS certificate file               |
+| `GATEWAY_TLS_KEY`              | string | `""`                  | Path to TLS key file                       |
+| `GATEWAY_JWT_SECRET`           | string | _required_            | HMAC-SHA256 secret for JWT validation      |
+| `GATEWAY_RATE_LIMIT_BURST`     | int    | `100`                 | Max burst requests per user                |
+| `GATEWAY_RATE_LIMIT_SUSTAINED` | float  | `50.0`                | Sustained requests/sec per user            |
+| `AUTH_SERVICE_ADDR`            | string | `auth-svc:9001`       | gRPC address of Auth/IAM service           |
+| `METADATA_SERVICE_ADDR`        | string | `metadata-svc:9002`   | gRPC address of Metadata service           |
+| `CHUNK_SERVICE_ADDR`           | string | `chunk-svc:9003`      | gRPC address of Chunk Engine               |
+| `SYNC_SERVICE_ADDR`            | string | `sync-svc:9004`       | gRPC address of Sync service               |
+| `SEARCH_SERVICE_ADDR`          | string | `search-svc:9005`     | gRPC address of Search service             |
+| `TIER_SERVICE_ADDR`            | string | `tier-svc:9006`       | gRPC address of Tier Manager               |
+| `NATS_URL`                     | string | `nats://nats:4222`    | NATS server URL (for SSE event forwarding) |
+| `OTEL_EXPORTER_ENDPOINT`       | string | `otel-collector:4318` | OTEL collector address                     |
 
 ### JWT Token Structure
 
@@ -332,77 +333,77 @@ Owns all user identity, authentication, role management, and permission/ACL logi
 
 #### Table: `users`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Unique user identifier |
-| `email` | `VARCHAR(255)` | `UNIQUE, NOT NULL` | User's email address (login identifier) |
-| `username` | `VARCHAR(100)` | `UNIQUE, NOT NULL` | Display name / handle |
-| `password_hash` | `VARCHAR(255)` | `NOT NULL` | bcrypt hash of password (cost factor 12) |
-| `role` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'user'` | `admin` or `user` |
-| `email_verified` | `BOOLEAN` | `NOT NULL, DEFAULT false` | Whether email has been verified |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'pending_verification'` | `pending_verification`, `active`, `suspended`, `deleted` |
-| `storage_quota_bytes` | `BIGINT` | `NOT NULL, DEFAULT 10737418240` | Storage quota in bytes (default 10 GB) |
-| `storage_used_bytes` | `BIGINT` | `NOT NULL, DEFAULT 0` | Current storage consumed |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Account creation timestamp |
-| `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last profile update |
-| `last_login_at` | `TIMESTAMPTZ` | `NULL` | Last successful login |
-| `password_changed_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last password change |
+| Column                | Type           | Constraints                                | Description                                              |
+| --------------------- | -------------- | ------------------------------------------ | -------------------------------------------------------- |
+| `id`                  | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()`   | Unique user identifier                                   |
+| `email`               | `VARCHAR(255)` | `UNIQUE, NOT NULL`                         | User's email address (login identifier)                  |
+| `username`            | `VARCHAR(100)` | `UNIQUE, NOT NULL`                         | Display name / handle                                    |
+| `password_hash`       | `VARCHAR(255)` | `NOT NULL`                                 | bcrypt hash of password (cost factor 12)                 |
+| `role`                | `VARCHAR(20)`  | `NOT NULL, DEFAULT 'user'`                 | `admin` or `user`                                        |
+| `email_verified`      | `BOOLEAN`      | `NOT NULL, DEFAULT false`                  | Whether email has been verified                          |
+| `status`              | `VARCHAR(20)`  | `NOT NULL, DEFAULT 'pending_verification'` | `pending_verification`, `active`, `suspended`, `deleted` |
+| `storage_quota_bytes` | `BIGINT`       | `NOT NULL, DEFAULT 10737418240`            | Storage quota in bytes (default 10 GB)                   |
+| `storage_used_bytes`  | `BIGINT`       | `NOT NULL, DEFAULT 0`                      | Current storage consumed                                 |
+| `created_at`          | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                  | Account creation timestamp                               |
+| `updated_at`          | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                  | Last profile update                                      |
+| `last_login_at`       | `TIMESTAMPTZ`  | `NULL`                                     | Last successful login                                    |
+| `password_changed_at` | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                  | Last password change                                     |
 
 #### Table: `roles`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `name` | `VARCHAR(20)` | `PRIMARY KEY` | Role name: `admin` or `user` |
-| `description` | `TEXT` | `NOT NULL` | Human-readable role description |
+| Column        | Type          | Constraints   | Description                     |
+| ------------- | ------------- | ------------- | ------------------------------- |
+| `name`        | `VARCHAR(20)` | `PRIMARY KEY` | Role name: `admin` or `user`    |
+| `description` | `TEXT`        | `NOT NULL`    | Human-readable role description |
 
 **Seed data:** Two rows — `admin` ("Full system access, bypasses all ACL checks") and `user` ("Standard user, subject to per-file ACL").
 
 #### Table: `acl`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | ACL entry identifier |
-| `file_id` | `UUID` | `NOT NULL` | The file this permission applies to |
-| `grantee_user_id` | `UUID` | `NOT NULL, FK → users.id` | The user receiving the permission |
-| `permission_level` | `INT` | `NOT NULL, CHECK (0 <= val <= 5)` | Cumulative permission level (see §15) |
-| `granted_by` | `UUID` | `NOT NULL, FK → users.id` | The user who granted this permission |
-| `granted_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When permission was granted |
+| Column             | Type          | Constraints                              | Description                           |
+| ------------------ | ------------- | ---------------------------------------- | ------------------------------------- |
+| `id`               | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | ACL entry identifier                  |
+| `file_id`          | `UUID`        | `NOT NULL`                               | The file this permission applies to   |
+| `grantee_user_id`  | `UUID`        | `NOT NULL, FK → users.id`                | The user receiving the permission     |
+| `permission_level` | `INT`         | `NOT NULL, CHECK (0 <= val <= 5)`        | Cumulative permission level (see §15) |
+| `granted_by`       | `UUID`        | `NOT NULL, FK → users.id`                | The user who granted this permission  |
+| `granted_at`       | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | When permission was granted           |
 
 **Unique constraint:** `UNIQUE(file_id, grantee_user_id)` — one permission entry per user per file.
 
 #### Table: `refresh_tokens`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Token record identifier |
-| `user_id` | `UUID` | `NOT NULL, FK → users.id ON DELETE CASCADE` | Owner of this refresh token |
-| `token_hash` | `VARCHAR(255)` | `NOT NULL, UNIQUE` | SHA-256 hash of the refresh token value |
-| `device_name` | `VARCHAR(255)` | `NULL` | Human-readable device label |
-| `expires_at` | `TIMESTAMPTZ` | `NOT NULL` | Expiry timestamp |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When this token was issued |
-| `revoked_at` | `TIMESTAMPTZ` | `NULL` | Set on revocation; token rejected if non-null |
+| Column        | Type           | Constraints                                 | Description                                   |
+| ------------- | -------------- | ------------------------------------------- | --------------------------------------------- |
+| `id`          | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()`    | Token record identifier                       |
+| `user_id`     | `UUID`         | `NOT NULL, FK → users.id ON DELETE CASCADE` | Owner of this refresh token                   |
+| `token_hash`  | `VARCHAR(255)` | `NOT NULL, UNIQUE`                          | SHA-256 hash of the refresh token value       |
+| `device_name` | `VARCHAR(255)` | `NULL`                                      | Human-readable device label                   |
+| `expires_at`  | `TIMESTAMPTZ`  | `NOT NULL`                                  | Expiry timestamp                              |
+| `created_at`  | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                   | When this token was issued                    |
+| `revoked_at`  | `TIMESTAMPTZ`  | `NULL`                                      | Set on revocation; token rejected if non-null |
 
 #### Table: `email_verification_tokens`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Token record identifier |
-| `user_id` | `UUID` | `NOT NULL, FK → users.id ON DELETE CASCADE` | User being verified |
-| `token` | `VARCHAR(255)` | `NOT NULL, UNIQUE` | Cryptographically random token (32 bytes hex) |
-| `expires_at` | `TIMESTAMPTZ` | `NOT NULL` | Expiry: 24 hours from creation |
-| `used_at` | `TIMESTAMPTZ` | `NULL` | Set when the token is consumed |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Creation timestamp |
+| Column       | Type           | Constraints                                 | Description                                   |
+| ------------ | -------------- | ------------------------------------------- | --------------------------------------------- |
+| `id`         | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()`    | Token record identifier                       |
+| `user_id`    | `UUID`         | `NOT NULL, FK → users.id ON DELETE CASCADE` | User being verified                           |
+| `token`      | `VARCHAR(255)` | `NOT NULL, UNIQUE`                          | Cryptographically random token (32 bytes hex) |
+| `expires_at` | `TIMESTAMPTZ`  | `NOT NULL`                                  | Expiry: 24 hours from creation                |
+| `used_at`    | `TIMESTAMPTZ`  | `NULL`                                      | Set when the token is consumed                |
+| `created_at` | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                   | Creation timestamp                            |
 
 #### Table: `password_reset_tokens`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Token record identifier |
-| `user_id` | `UUID` | `NOT NULL, FK → users.id ON DELETE CASCADE` | User requesting reset |
-| `token` | `VARCHAR(255)` | `NOT NULL, UNIQUE` | Cryptographically random token (32 bytes hex) |
-| `expires_at` | `TIMESTAMPTZ` | `NOT NULL` | Expiry: 1 hour from creation |
-| `used_at` | `TIMESTAMPTZ` | `NULL` | Set when the token is consumed |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Creation timestamp |
+| Column       | Type           | Constraints                                 | Description                                   |
+| ------------ | -------------- | ------------------------------------------- | --------------------------------------------- |
+| `id`         | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()`    | Token record identifier                       |
+| `user_id`    | `UUID`         | `NOT NULL, FK → users.id ON DELETE CASCADE` | User requesting reset                         |
+| `token`      | `VARCHAR(255)` | `NOT NULL, UNIQUE`                          | Cryptographically random token (32 bytes hex) |
+| `expires_at` | `TIMESTAMPTZ`  | `NOT NULL`                                  | Expiry: 1 hour from creation                  |
+| `used_at`    | `TIMESTAMPTZ`  | `NULL`                                      | Set when the token is consumed                |
+| `created_at` | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                   | Creation timestamp                            |
 
 ### gRPC RPCs
 
@@ -455,6 +456,7 @@ message RegisterResponse {
 ```
 
 **Flow:**
+
 1. Validate email format, username uniqueness, password strength.
 2. Hash password with bcrypt (cost 12).
 3. Insert user row with `status = 'pending_verification'`, `email_verified = false`.
@@ -476,6 +478,7 @@ message VerifyEmailResponse {
 ```
 
 **Flow:**
+
 1. Look up token in `email_verification_tokens`.
 2. Check not expired (`expires_at > NOW()`), not already used (`used_at IS NULL`).
 3. Set `used_at = NOW()` on the token row.
@@ -499,6 +502,7 @@ message LoginResponse {
 ```
 
 **Flow:**
+
 1. Look up user by email.
 2. If `status != 'active'` → return `PERMISSION_DENIED` with appropriate message:
    - `pending_verification` → "Please verify your email first"
@@ -524,6 +528,7 @@ message RequestPasswordResetResponse {
 ```
 
 **Flow:**
+
 1. Look up user by email.
 2. **If user does not exist → still return success message** (prevent email enumeration).
 3. If user exists:
@@ -546,6 +551,7 @@ message ResetPasswordResponse {
 ```
 
 **Flow:**
+
 1. Look up token in `password_reset_tokens`.
 2. Validate: not expired, not already used.
 3. Mark token as used.
@@ -568,6 +574,7 @@ message ChangePasswordResponse {
 ```
 
 **Flow:**
+
 1. Extract `user_id` from gRPC metadata (`x-user-id`).
 2. Verify `current_password` against stored hash.
 3. If mismatch → return `UNAUTHENTICATED`.
@@ -592,6 +599,7 @@ message CheckPermissionResponse {
 ```
 
 **Flow:**
+
 1. Look up user's role.
 2. If role = `admin` → return `{allowed: true, actual_level: 5}` (bypass ACL).
 3. Query ACL table: `SELECT permission_level FROM acl WHERE file_id = ? AND grantee_user_id = ?`.
@@ -615,6 +623,7 @@ message GrantPermissionResponse {
 ```
 
 **Flow:**
+
 1. Check granter has level 5 (Share) on the file. If not → `PERMISSION_DENIED`.
 2. Check `permission_level <= granter's own level`. Granter cannot escalate beyond their own access.
 3. UPSERT into `acl` table.
@@ -622,32 +631,32 @@ message GrantPermissionResponse {
 
 ### Configuration (Environment Variables)
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `AUTH_GRPC_PORT` | int | `9001` | gRPC listen port |
-| `AUTH_DB_DSN` | string | *required* | PostgreSQL connection string |
-| `AUTH_JWT_SECRET` | string | *required* | HMAC-SHA256 signing secret (shared with gateway) |
-| `AUTH_BCRYPT_COST` | int | `12` | bcrypt cost factor |
-| `AUTH_ACCESS_TOKEN_TTL` | duration | `24h` | Access token lifetime |
-| `AUTH_REFRESH_TOKEN_TTL` | duration | `720h` | Refresh token lifetime (30 days) |
-| `AUTH_EMAIL_VERIFY_TTL` | duration | `24h` | Email verification token lifetime |
-| `AUTH_PASSWORD_RESET_TTL` | duration | `1h` | Password reset token lifetime |
-| `AUTH_DEFAULT_QUOTA_BYTES` | int64 | `10737418240` | Default storage quota (10 GB) |
-| `EMAIL_SERVICE_ADDR` | string | `email-svc:9007` | gRPC address of Email service |
-| `NATS_URL` | string | `nats://nats:4222` | NATS server URL |
-| `OTEL_EXPORTER_ENDPOINT` | string | `otel-collector:4318` | OTEL collector address |
+| Variable                   | Type     | Default               | Description                                      |
+| -------------------------- | -------- | --------------------- | ------------------------------------------------ |
+| `AUTH_GRPC_PORT`           | int      | `9001`                | gRPC listen port                                 |
+| `AUTH_DB_DSN`              | string   | _required_            | PostgreSQL connection string                     |
+| `AUTH_JWT_SECRET`          | string   | _required_            | HMAC-SHA256 signing secret (shared with gateway) |
+| `AUTH_BCRYPT_COST`         | int      | `12`                  | bcrypt cost factor                               |
+| `AUTH_ACCESS_TOKEN_TTL`    | duration | `24h`                 | Access token lifetime                            |
+| `AUTH_REFRESH_TOKEN_TTL`   | duration | `720h`                | Refresh token lifetime (30 days)                 |
+| `AUTH_EMAIL_VERIFY_TTL`    | duration | `24h`                 | Email verification token lifetime                |
+| `AUTH_PASSWORD_RESET_TTL`  | duration | `1h`                  | Password reset token lifetime                    |
+| `AUTH_DEFAULT_QUOTA_BYTES` | int64    | `10737418240`         | Default storage quota (10 GB)                    |
+| `EMAIL_SERVICE_ADDR`       | string   | `email-svc:9007`      | gRPC address of Email service                    |
+| `NATS_URL`                 | string   | `nats://nats:4222`    | NATS server URL                                  |
+| `OTEL_EXPORTER_ENDPOINT`   | string   | `otel-collector:4318` | OTEL collector address                           |
 
 ### NATS Events Published
 
-| Subject | Payload Fields | Triggered By |
-|---|---|---|
-| `user.created` | `user_id, email, username, created_at` | Register |
-| `user.verified` | `user_id, verified_at` | VerifyEmail |
-| `user.password_changed` | `user_id, changed_at` | ResetPassword, ChangePassword |
-| `user.suspended` | `user_id, suspended_by, suspended_at` | SuspendUser |
-| `user.deleted` | `user_id, deleted_by, deleted_at` | DeleteUser |
-| `acl.granted` | `file_id, grantee_user_id, permission_level, granted_by, granted_at` | GrantPermission |
-| `acl.revoked` | `file_id, grantee_user_id, revoked_by, revoked_at` | RevokePermission |
+| Subject                 | Payload Fields                                                       | Triggered By                  |
+| ----------------------- | -------------------------------------------------------------------- | ----------------------------- |
+| `user.created`          | `user_id, email, username, created_at`                               | Register                      |
+| `user.verified`         | `user_id, verified_at`                                               | VerifyEmail                   |
+| `user.password_changed` | `user_id, changed_at`                                                | ResetPassword, ChangePassword |
+| `user.suspended`        | `user_id, suspended_by, suspended_at`                                | SuspendUser                   |
+| `user.deleted`          | `user_id, deleted_by, deleted_at`                                    | DeleteUser                    |
+| `acl.granted`           | `file_id, grantee_user_id, permission_level, granted_by, granted_at` | GrantPermission               |
+| `acl.revoked`           | `file_id, grantee_user_id, revoked_by, revoked_at`                   | RevokePermission              |
 
 ---
 
@@ -661,22 +670,22 @@ Authoritative source for the **file namespace**. Owns the file tree, file metada
 
 #### Table: `files`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Unique file identifier |
-| `owner_id` | `UUID` | `NOT NULL, FK → users.id` | File owner |
-| `parent_id` | `UUID` | `NULL, FK → files.id` | Parent directory (NULL = root) |
-| `name` | `VARCHAR(255)` | `NOT NULL` | File or directory name |
-| `path` | `TEXT` | `NOT NULL` | Full path (e.g., `/documents/report.pdf`) |
-| `is_directory` | `BOOLEAN` | `NOT NULL, DEFAULT false` | Whether this is a directory |
-| `size_bytes` | `BIGINT` | `NOT NULL, DEFAULT 0` | File size in bytes (0 for directories) |
-| `mime_type` | `VARCHAR(255)` | `NULL` | Detected MIME type |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'ACTIVE'` | `UPLOADING`, `ACTIVE`, `DELETED`, `RESTORING` |
-| `current_version` | `INT` | `NOT NULL, DEFAULT 1` | Current version number |
-| `checksum` | `VARCHAR(64)` | `NULL` | BLAKE3 hash of the complete file content |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Creation timestamp |
-| `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last update |
-| `deleted_at` | `TIMESTAMPTZ` | `NULL` | Soft-delete timestamp |
+| Column            | Type           | Constraints                              | Description                                   |
+| ----------------- | -------------- | ---------------------------------------- | --------------------------------------------- |
+| `id`              | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Unique file identifier                        |
+| `owner_id`        | `UUID`         | `NOT NULL, FK → users.id`                | File owner                                    |
+| `parent_id`       | `UUID`         | `NULL, FK → files.id`                    | Parent directory (NULL = root)                |
+| `name`            | `VARCHAR(255)` | `NOT NULL`                               | File or directory name                        |
+| `path`            | `TEXT`         | `NOT NULL`                               | Full path (e.g., `/documents/report.pdf`)     |
+| `is_directory`    | `BOOLEAN`      | `NOT NULL, DEFAULT false`                | Whether this is a directory                   |
+| `size_bytes`      | `BIGINT`       | `NOT NULL, DEFAULT 0`                    | File size in bytes (0 for directories)        |
+| `mime_type`       | `VARCHAR(255)` | `NULL`                                   | Detected MIME type                            |
+| `status`          | `VARCHAR(20)`  | `NOT NULL, DEFAULT 'ACTIVE'`             | `UPLOADING`, `ACTIVE`, `DELETED`, `RESTORING` |
+| `current_version` | `INT`          | `NOT NULL, DEFAULT 1`                    | Current version number                        |
+| `checksum`        | `VARCHAR(64)`  | `NULL`                                   | BLAKE3 hash of the complete file content      |
+| `created_at`      | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                | Creation timestamp                            |
+| `updated_at`      | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                | Last update                                   |
+| `deleted_at`      | `TIMESTAMPTZ`  | `NULL`                                   | Soft-delete timestamp                         |
 
 **Unique constraint:** `UNIQUE(parent_id, name, owner_id)` — no duplicate names in the same directory for the same owner.
 
@@ -684,30 +693,30 @@ Authoritative source for the **file namespace**. Owns the file tree, file metada
 
 #### Table: `file_versions`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Version record ID |
-| `file_id` | `UUID` | `NOT NULL, FK → files.id ON DELETE CASCADE` | Parent file |
-| `version_number` | `INT` | `NOT NULL` | Sequential version (1, 2, 3, ...) |
-| `size_bytes` | `BIGINT` | `NOT NULL` | File size at this version |
-| `checksum` | `VARCHAR(64)` | `NOT NULL` | BLAKE3 hash of full file content at this version |
-| `chunk_count` | `INT` | `NOT NULL` | Number of chunks in this version's manifest |
-| `new_chunk_bytes` | `BIGINT` | `NOT NULL, DEFAULT 0` | Bytes stored that are unique to this version (for dedup stats) |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When this version was created |
-| `created_by` | `UUID` | `NOT NULL, FK → users.id` | Who uploaded this version |
+| Column            | Type          | Constraints                                 | Description                                                    |
+| ----------------- | ------------- | ------------------------------------------- | -------------------------------------------------------------- |
+| `id`              | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()`    | Version record ID                                              |
+| `file_id`         | `UUID`        | `NOT NULL, FK → files.id ON DELETE CASCADE` | Parent file                                                    |
+| `version_number`  | `INT`         | `NOT NULL`                                  | Sequential version (1, 2, 3, ...)                              |
+| `size_bytes`      | `BIGINT`      | `NOT NULL`                                  | File size at this version                                      |
+| `checksum`        | `VARCHAR(64)` | `NOT NULL`                                  | BLAKE3 hash of full file content at this version               |
+| `chunk_count`     | `INT`         | `NOT NULL`                                  | Number of chunks in this version's manifest                    |
+| `new_chunk_bytes` | `BIGINT`      | `NOT NULL, DEFAULT 0`                       | Bytes stored that are unique to this version (for dedup stats) |
+| `created_at`      | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                   | When this version was created                                  |
+| `created_by`      | `UUID`        | `NOT NULL, FK → users.id`                   | Who uploaded this version                                      |
 
 **Unique constraint:** `UNIQUE(file_id, version_number)`
 
 #### Table: `chunk_manifests`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Manifest entry ID |
-| `file_version_id` | `UUID` | `NOT NULL, FK → file_versions.id ON DELETE CASCADE` | The file version this chunk belongs to |
-| `chunk_index` | `INT` | `NOT NULL` | Ordered position (0, 1, 2, ...) |
-| `chunk_id` | `VARCHAR(64)` | `NOT NULL` | BLAKE3 hash of the chunk content (the CAS key) |
-| `offset` | `BIGINT` | `NOT NULL` | Byte offset of this chunk within the file |
-| `size_bytes` | `INT` | `NOT NULL` | Size of this chunk in bytes |
+| Column            | Type          | Constraints                                         | Description                                    |
+| ----------------- | ------------- | --------------------------------------------------- | ---------------------------------------------- |
+| `id`              | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()`            | Manifest entry ID                              |
+| `file_version_id` | `UUID`        | `NOT NULL, FK → file_versions.id ON DELETE CASCADE` | The file version this chunk belongs to         |
+| `chunk_index`     | `INT`         | `NOT NULL`                                          | Ordered position (0, 1, 2, ...)                |
+| `chunk_id`        | `VARCHAR(64)` | `NOT NULL`                                          | BLAKE3 hash of the chunk content (the CAS key) |
+| `offset`          | `BIGINT`      | `NOT NULL`                                          | Byte offset of this chunk within the file      |
+| `size_bytes`      | `INT`         | `NOT NULL`                                          | Size of this chunk in bytes                    |
 
 **Unique constraint:** `UNIQUE(file_version_id, chunk_index)`
 
@@ -715,31 +724,31 @@ Authoritative source for the **file namespace**. Owns the file tree, file metada
 
 #### Table: `upload_sessions`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Session identifier |
-| `file_id` | `UUID` | `NOT NULL, FK → files.id` | The file being uploaded |
-| `user_id` | `UUID` | `NOT NULL, FK → users.id` | Uploader |
-| `expected_size` | `BIGINT` | `NOT NULL` | Total expected file size |
-| `expected_chunks` | `INT` | `NOT NULL` | Number of expected chunks |
-| `received_chunks` | `INT` | `NOT NULL, DEFAULT 0` | Chunks received so far |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'IN_PROGRESS'` | `IN_PROGRESS`, `FINALIZED`, `EXPIRED`, `FAILED` |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Session start |
-| `expires_at` | `TIMESTAMPTZ` | `NOT NULL` | Session expiry (24h from creation) |
-| `finalized_at` | `TIMESTAMPTZ` | `NULL` | When finalized |
+| Column            | Type          | Constraints                              | Description                                     |
+| ----------------- | ------------- | ---------------------------------------- | ----------------------------------------------- |
+| `id`              | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Session identifier                              |
+| `file_id`         | `UUID`        | `NOT NULL, FK → files.id`                | The file being uploaded                         |
+| `user_id`         | `UUID`        | `NOT NULL, FK → users.id`                | Uploader                                        |
+| `expected_size`   | `BIGINT`      | `NOT NULL`                               | Total expected file size                        |
+| `expected_chunks` | `INT`         | `NOT NULL`                               | Number of expected chunks                       |
+| `received_chunks` | `INT`         | `NOT NULL, DEFAULT 0`                    | Chunks received so far                          |
+| `status`          | `VARCHAR(20)` | `NOT NULL, DEFAULT 'IN_PROGRESS'`        | `IN_PROGRESS`, `FINALIZED`, `EXPIRED`, `FAILED` |
+| `created_at`      | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | Session start                                   |
+| `expires_at`      | `TIMESTAMPTZ` | `NOT NULL`                               | Session expiry (24h from creation)              |
+| `finalized_at`    | `TIMESTAMPTZ` | `NULL`                                   | When finalized                                  |
 
 #### Table: `share_tokens`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `token_id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Public-facing token identifier |
-| `file_id` | `UUID` | `NOT NULL, FK → files.id` | The file being shared |
-| `permission_level` | `INT` | `NOT NULL, CHECK (1 <= val <= 4)` | Capped: 1 (Read/View) or 4 (Download) are typical |
-| `expiry` | `TIMESTAMPTZ` | `NULL` | Null = permanent until revoked |
-| `created_by_user_id` | `UUID` | `NOT NULL, FK → users.id` | Must have level 5 on the file to create |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Creation timestamp |
-| `revoked_at` | `TIMESTAMPTZ` | `NULL` | Set on revocation; token rejected if non-null |
-| `access_count` | `INT` | `NOT NULL, DEFAULT 0` | Number of times this link has been accessed |
+| Column               | Type          | Constraints                              | Description                                       |
+| -------------------- | ------------- | ---------------------------------------- | ------------------------------------------------- |
+| `token_id`           | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Public-facing token identifier                    |
+| `file_id`            | `UUID`        | `NOT NULL, FK → files.id`                | The file being shared                             |
+| `permission_level`   | `INT`         | `NOT NULL, CHECK (1 <= val <= 4)`        | Capped: 1 (Read/View) or 4 (Download) are typical |
+| `expiry`             | `TIMESTAMPTZ` | `NULL`                                   | Null = permanent until revoked                    |
+| `created_by_user_id` | `UUID`        | `NOT NULL, FK → users.id`                | Must have level 5 on the file to create           |
+| `created_at`         | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | Creation timestamp                                |
+| `revoked_at`         | `TIMESTAMPTZ` | `NULL`                                   | Set on revocation; token rejected if non-null     |
+| `access_count`       | `INT`         | `NOT NULL, DEFAULT 0`                    | Number of times this link has been accessed       |
 
 ### gRPC RPCs
 
@@ -816,27 +825,27 @@ message FinalizeUploadResponse {
 
 ### NATS Events Published
 
-| Subject | Payload Fields | Triggered By |
-|---|---|---|
-| `file.created` | `file_id, owner_id, path, name, size_bytes, mime_type, version, created_at` | FinalizeUpload (new file) |
-| `file.updated` | `file_id, owner_id, path, name, size_bytes, new_version, old_version, updated_at` | FinalizeUpload (existing file) |
-| `file.deleted` | `file_id, owner_id, path, deleted_by, deleted_at` | DeleteFile |
-| `file.moved` | `file_id, owner_id, old_path, new_path, moved_at` | MoveFile |
-| `file.renamed` | `file_id, owner_id, old_name, new_name, renamed_at` | RenameFile |
-| `share.created` | `file_id, token_id, permission_level, expiry, created_by` | CreateShareToken |
-| `share.revoked` | `file_id, token_id, revoked_by` | RevokeShareToken |
+| Subject         | Payload Fields                                                                    | Triggered By                   |
+| --------------- | --------------------------------------------------------------------------------- | ------------------------------ |
+| `file.created`  | `file_id, owner_id, path, name, size_bytes, mime_type, version, created_at`       | FinalizeUpload (new file)      |
+| `file.updated`  | `file_id, owner_id, path, name, size_bytes, new_version, old_version, updated_at` | FinalizeUpload (existing file) |
+| `file.deleted`  | `file_id, owner_id, path, deleted_by, deleted_at`                                 | DeleteFile                     |
+| `file.moved`    | `file_id, owner_id, old_path, new_path, moved_at`                                 | MoveFile                       |
+| `file.renamed`  | `file_id, owner_id, old_name, new_name, renamed_at`                               | RenameFile                     |
+| `share.created` | `file_id, token_id, permission_level, expiry, created_by`                         | CreateShareToken               |
+| `share.revoked` | `file_id, token_id, revoked_by`                                                   | RevokeShareToken               |
 
 ### Configuration (Environment Variables)
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `METADATA_GRPC_PORT` | int | `9002` | gRPC listen port |
-| `METADATA_DB_DSN` | string | *required* | PostgreSQL connection string |
-| `METADATA_UPLOAD_SESSION_TTL` | duration | `24h` | Upload session expiry |
-| `METADATA_MAX_VERSIONS` | int | `5` | Default max versions to retain per file |
-| `AUTH_SERVICE_ADDR` | string | `auth-svc:9001` | For permission checks |
-| `NATS_URL` | string | `nats://nats:4222` | NATS server URL |
-| `OTEL_EXPORTER_ENDPOINT` | string | `otel-collector:4318` | OTEL collector address |
+| Variable                      | Type     | Default               | Description                             |
+| ----------------------------- | -------- | --------------------- | --------------------------------------- |
+| `METADATA_GRPC_PORT`          | int      | `9002`                | gRPC listen port                        |
+| `METADATA_DB_DSN`             | string   | _required_            | PostgreSQL connection string            |
+| `METADATA_UPLOAD_SESSION_TTL` | duration | `24h`                 | Upload session expiry                   |
+| `METADATA_MAX_VERSIONS`       | int      | `5`                   | Default max versions to retain per file |
+| `AUTH_SERVICE_ADDR`           | string   | `auth-svc:9001`       | For permission checks                   |
+| `NATS_URL`                    | string   | `nats://nats:4222`    | NATS server URL                         |
+| `OTEL_EXPORTER_ENDPOINT`      | string   | `otel-collector:4318` | OTEL collector address                  |
 
 ---
 
@@ -921,6 +930,7 @@ message StoreChunkResponse {
 ```
 
 **Flow:**
+
 1. Receive header with expected `chunk_id` and size.
 2. Check if `chunk_id` exists in BadgerDB. If yes → return `{already_existed: true}`, skip data frames.
 3. Receive data frames (64KB each), stream to hot storage backend.
@@ -966,6 +976,7 @@ message FetchChunkHeader {
 ```
 
 **Flow:**
+
 1. Look up `chunk_id` in BadgerDB → get `ChunkMeta`.
 2. If tier = `cold` → return `UNAVAILABLE` with detail "chunk is on cold tier, initiate restore".
 3. If tier = `warm` → decompress (zstd) before streaming.
@@ -976,28 +987,28 @@ message FetchChunkHeader {
 
 ### NATS Events Published
 
-| Subject | Payload Fields |
-|---|---|
-| `chunk.stored` | `chunk_id, size, tier, created_at` |
-| `chunk.deleted` | `chunk_id, deleted_at, reason` |
+| Subject         | Payload Fields                     |
+| --------------- | ---------------------------------- |
+| `chunk.stored`  | `chunk_id, size, tier, created_at` |
+| `chunk.deleted` | `chunk_id, deleted_at, reason`     |
 
 ### Configuration (Environment Variables)
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `CHUNK_GRPC_PORT` | int | `9003` | gRPC listen port |
-| `CHUNK_HOT_STORAGE_PATH` | string | `/data/hot` | Local filesystem path for hot tier |
-| `CHUNK_WARM_STORAGE_ENDPOINT` | string | `minio:9000` | MinIO/S3 endpoint for warm tier |
-| `CHUNK_WARM_STORAGE_BUCKET` | string | `nimbus-warm` | Warm tier bucket name |
-| `CHUNK_WARM_ACCESS_KEY` | string | *required* | MinIO access key |
-| `CHUNK_WARM_SECRET_KEY` | string | *required* | MinIO secret key |
-| `CHUNK_COLD_STORAGE_ENDPOINT` | string | `""` | Cold tier endpoint (empty = disabled) |
-| `CHUNK_COLD_STORAGE_BUCKET` | string | `nimbus-cold` | Cold tier bucket |
-| `CHUNK_BADGER_PATH` | string | `/data/chunk-index` | BadgerDB data directory |
-| `CHUNK_FRAME_SIZE` | int | `65536` | Streaming frame size (64KB) |
-| `CHUNK_VERIFY_ON_READ` | bool | `true` | Whether to verify CRC32C on every read |
-| `NATS_URL` | string | `nats://nats:4222` | NATS server URL |
-| `OTEL_EXPORTER_ENDPOINT` | string | `otel-collector:4318` | OTEL collector address |
+| Variable                      | Type   | Default               | Description                            |
+| ----------------------------- | ------ | --------------------- | -------------------------------------- |
+| `CHUNK_GRPC_PORT`             | int    | `9003`                | gRPC listen port                       |
+| `CHUNK_HOT_STORAGE_PATH`      | string | `/data/hot`           | Local filesystem path for hot tier     |
+| `CHUNK_WARM_STORAGE_ENDPOINT` | string | `minio:9000`          | MinIO/S3 endpoint for warm tier        |
+| `CHUNK_WARM_STORAGE_BUCKET`   | string | `errebus-warm`        | Warm tier bucket name                  |
+| `CHUNK_WARM_ACCESS_KEY`       | string | _required_            | MinIO access key                       |
+| `CHUNK_WARM_SECRET_KEY`       | string | _required_            | MinIO secret key                       |
+| `CHUNK_COLD_STORAGE_ENDPOINT` | string | `""`                  | Cold tier endpoint (empty = disabled)  |
+| `CHUNK_COLD_STORAGE_BUCKET`   | string | `errebus-cold`        | Cold tier bucket                       |
+| `CHUNK_BADGER_PATH`           | string | `/data/chunk-index`   | BadgerDB data directory                |
+| `CHUNK_FRAME_SIZE`            | int    | `65536`               | Streaming frame size (64KB)            |
+| `CHUNK_VERIFY_ON_READ`        | bool   | `true`                | Whether to verify CRC32C on every read |
+| `NATS_URL`                    | string | `nats://nats:4222`    | NATS server URL                        |
+| `OTEL_EXPORTER_ENDPOINT`      | string | `otel-collector:4318` | OTEL collector address                 |
 
 ---
 
@@ -1011,54 +1022,54 @@ Owns **tier policy**, **tier assignment**, and **migration job scheduling**. Det
 
 #### Table: `heat_records`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `chunk_id` | `VARCHAR(64)` | `PRIMARY KEY` | The chunk being tracked |
-| `current_tier` | `VARCHAR(10)` | `NOT NULL, DEFAULT 'hot'` | Current storage tier: `hot`, `warm`, `cold` |
-| `last_access_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last time this chunk was read |
-| `access_count` | `BIGINT` | `NOT NULL, DEFAULT 0` | Total lifetime read count |
-| `size_bytes` | `INT` | `NOT NULL` | Chunk size for migration cost estimation |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When chunk was first registered |
+| Column           | Type          | Constraints               | Description                                 |
+| ---------------- | ------------- | ------------------------- | ------------------------------------------- |
+| `chunk_id`       | `VARCHAR(64)` | `PRIMARY KEY`             | The chunk being tracked                     |
+| `current_tier`   | `VARCHAR(10)` | `NOT NULL, DEFAULT 'hot'` | Current storage tier: `hot`, `warm`, `cold` |
+| `last_access_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last time this chunk was read               |
+| `access_count`   | `BIGINT`      | `NOT NULL, DEFAULT 0`     | Total lifetime read count                   |
+| `size_bytes`     | `INT`         | `NOT NULL`                | Chunk size for migration cost estimation    |
+| `created_at`     | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When chunk was first registered             |
 
 #### Table: `migration_jobs`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Job identifier |
-| `chunk_id` | `VARCHAR(64)` | `NOT NULL` | Chunk to migrate |
-| `source_tier` | `VARCHAR(10)` | `NOT NULL` | Current tier |
-| `target_tier` | `VARCHAR(10)` | `NOT NULL` | Desired tier |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'PENDING'` | `PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED` |
-| `priority` | `INT` | `NOT NULL, DEFAULT 0` | Higher = more urgent (restore jobs get priority 10) |
-| `error_message` | `TEXT` | `NULL` | Error details on failure |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Job creation time |
-| `started_at` | `TIMESTAMPTZ` | `NULL` | Processing start time |
-| `completed_at` | `TIMESTAMPTZ` | `NULL` | Processing completion time |
-| `retry_count` | `INT` | `NOT NULL, DEFAULT 0` | Number of retries attempted |
+| Column          | Type          | Constraints                              | Description                                         |
+| --------------- | ------------- | ---------------------------------------- | --------------------------------------------------- |
+| `id`            | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Job identifier                                      |
+| `chunk_id`      | `VARCHAR(64)` | `NOT NULL`                               | Chunk to migrate                                    |
+| `source_tier`   | `VARCHAR(10)` | `NOT NULL`                               | Current tier                                        |
+| `target_tier`   | `VARCHAR(10)` | `NOT NULL`                               | Desired tier                                        |
+| `status`        | `VARCHAR(20)` | `NOT NULL, DEFAULT 'PENDING'`            | `PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`     |
+| `priority`      | `INT`         | `NOT NULL, DEFAULT 0`                    | Higher = more urgent (restore jobs get priority 10) |
+| `error_message` | `TEXT`        | `NULL`                                   | Error details on failure                            |
+| `created_at`    | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | Job creation time                                   |
+| `started_at`    | `TIMESTAMPTZ` | `NULL`                                   | Processing start time                               |
+| `completed_at`  | `TIMESTAMPTZ` | `NULL`                                   | Processing completion time                          |
+| `retry_count`   | `INT`         | `NOT NULL, DEFAULT 0`                    | Number of retries attempted                         |
 
 #### Table: `restore_jobs`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Job identifier |
-| `file_id` | `UUID` | `NOT NULL` | File being restored (maps to multiple chunks) |
-| `requested_by` | `UUID` | `NOT NULL` | User who requested the restore |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'PENDING'` | `PENDING`, `IN_PROGRESS`, `READY`, `FAILED` |
-| `total_chunks` | `INT` | `NOT NULL` | Total chunks to restore |
-| `completed_chunks` | `INT` | `NOT NULL, DEFAULT 0` | Chunks restored so far |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Request time |
-| `ready_at` | `TIMESTAMPTZ` | `NULL` | When all chunks are ready |
+| Column             | Type          | Constraints                              | Description                                   |
+| ------------------ | ------------- | ---------------------------------------- | --------------------------------------------- |
+| `id`               | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Job identifier                                |
+| `file_id`          | `UUID`        | `NOT NULL`                               | File being restored (maps to multiple chunks) |
+| `requested_by`     | `UUID`        | `NOT NULL`                               | User who requested the restore                |
+| `status`           | `VARCHAR(20)` | `NOT NULL, DEFAULT 'PENDING'`            | `PENDING`, `IN_PROGRESS`, `READY`, `FAILED`   |
+| `total_chunks`     | `INT`         | `NOT NULL`                               | Total chunks to restore                       |
+| `completed_chunks` | `INT`         | `NOT NULL, DEFAULT 0`                    | Chunks restored so far                        |
+| `created_at`       | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | Request time                                  |
+| `ready_at`         | `TIMESTAMPTZ` | `NULL`                                   | When all chunks are ready                     |
 
 ### Tier Policy Configuration
 
 ```yaml
 tier_policy:
-  hot_to_warm_after: "168h"        # 7 days without access
-  warm_to_cold_after: "720h"       # 30 days without access
-  min_file_size_for_tiering: 1048576  # 1 MB — don't bother tiering tiny files
-  scan_interval: "1h"             # how often the scheduler scans
-  max_concurrent_migrations: 10    # semaphore limit
-  restore_priority: 10            # priority for cold→hot restore jobs
+  hot_to_warm_after: "168h" # 7 days without access
+  warm_to_cold_after: "720h" # 30 days without access
+  min_file_size_for_tiering: 1048576 # 1 MB — don't bother tiering tiny files
+  scan_interval: "1h" # how often the scheduler scans
+  max_concurrent_migrations: 10 # semaphore limit
+  restore_priority: 10 # priority for cold→hot restore jobs
 ```
 
 ### gRPC RPCs
@@ -1090,6 +1101,7 @@ message InitiateRestoreResponse {
 ```
 
 **Flow:**
+
 1. Look up file's chunk manifest from Metadata Service.
 2. Identify which chunks are on cold tier.
 3. Create `restore_job` row.
@@ -1100,17 +1112,17 @@ message InitiateRestoreResponse {
 
 ### NATS Events Published
 
-| Subject | Payload Fields |
-|---|---|
-| `tier.changed` | `chunk_id, old_tier, new_tier, changed_at` |
-| `chunk.tiered` | `chunk_id, tier, migrated_at` |
-| `file.restored` | `file_id, restore_job_id, restored_at` |
+| Subject         | Payload Fields                             |
+| --------------- | ------------------------------------------ |
+| `tier.changed`  | `chunk_id, old_tier, new_tier, changed_at` |
+| `chunk.tiered`  | `chunk_id, tier, migrated_at`              |
+| `file.restored` | `file_id, restore_job_id, restored_at`     |
 
 ### NATS Events Consumed
 
-| Subject | Action |
-|---|---|
-| `chunk.stored` | Register chunk in `heat_records` with tier=hot |
+| Subject                        | Action                                              |
+| ------------------------------ | --------------------------------------------------- |
+| `chunk.stored`                 | Register chunk in `heat_records` with tier=hot      |
 | `file.created`, `file.updated` | Update access timestamps for all chunks in manifest |
 
 ---
@@ -1127,42 +1139,42 @@ Stateless processor that compresses chunks during tier transitions. Consumes NAT
 2. **For each event:**
    a. Read chunk data from source tier via Chunk Engine.
    b. Detect compressibility:
-      - **MIME sniff:** Check magic bytes using `gabriel-vasile/mimetype`. Skip if JPEG, PNG, MP4, ZIP, GZIP, etc.
-      - **Compressibility probe:** Compress first 64KB with zstd-fastest. If ratio > 90% → skip.
-   c. Apply compression algorithm based on target tier:
-      - Warm → zstd level 1 (~500 MB/s, ~2.5:1 ratio)
-      - Cold → zstd level 9 (~80 MB/s, ~3.5:1 ratio)
-   d. Write compressed chunk to target tier via Chunk Engine.
-   e. Update ChunkMeta in Chunk Engine with `CompressionAlgo` field.
+   - **MIME sniff:** Check magic bytes using `gabriel-vasile/mimetype`. Skip if JPEG, PNG, MP4, ZIP, GZIP, etc.
+   - **Compressibility probe:** Compress first 64KB with zstd-fastest. If ratio > 90% → skip.
+     c. Apply compression algorithm based on target tier:
+   - Warm → zstd level 1 (~500 MB/s, ~2.5:1 ratio)
+   - Cold → zstd level 9 (~80 MB/s, ~3.5:1 ratio)
+     d. Write compressed chunk to target tier via Chunk Engine.
+     e. Update ChunkMeta in Chunk Engine with `CompressionAlgo` field.
 3. **Publishes:** `chunk.compressed` to NATS.
 
 ### NATS Events
 
-| Direction | Subject | Details |
-|---|---|---|
-| Consume | `chunk.tiered` | Trigger compression for the migrated chunk |
-| Publish | `chunk.compressed` | `chunk_id, algorithm, original_size, compressed_size, ratio, compressed_at` |
+| Direction | Subject            | Details                                                                     |
+| --------- | ------------------ | --------------------------------------------------------------------------- |
+| Consume   | `chunk.tiered`     | Trigger compression for the migrated chunk                                  |
+| Publish   | `chunk.compressed` | `chunk_id, algorithm, original_size, compressed_size, ratio, compressed_at` |
 
 ### Compression Decision Matrix
 
-| Input MIME Type | Target Tier | Action | Algorithm |
-|---|---|---|---|
-| `image/jpeg`, `image/png`, `image/webp`, `image/gif` | Any | Skip — already compressed | `none` |
-| `video/mp4`, `video/webm`, `audio/mpeg` | Any | Skip | `none` |
-| `application/zip`, `application/gzip`, `application/zstd` | Any | Skip | `none` |
-| Any other, compressibility ratio < 90% | Warm | Compress | `zstd1` |
-| Any other, compressibility ratio < 90% | Cold | Compress | `zstd9` |
-| Any other, compressibility ratio >= 90% | Any | Skip | `none` |
+| Input MIME Type                                           | Target Tier | Action                    | Algorithm |
+| --------------------------------------------------------- | ----------- | ------------------------- | --------- |
+| `image/jpeg`, `image/png`, `image/webp`, `image/gif`      | Any         | Skip — already compressed | `none`    |
+| `video/mp4`, `video/webm`, `audio/mpeg`                   | Any         | Skip                      | `none`    |
+| `application/zip`, `application/gzip`, `application/zstd` | Any         | Skip                      | `none`    |
+| Any other, compressibility ratio < 90%                    | Warm        | Compress                  | `zstd1`   |
+| Any other, compressibility ratio < 90%                    | Cold        | Compress                  | `zstd9`   |
+| Any other, compressibility ratio >= 90%                   | Any         | Skip                      | `none`    |
 
 ### Configuration
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `COMPRESSION_WORKER_CONCURRENCY` | int | `4` | Number of parallel compression goroutines |
-| `COMPRESSION_PROBE_SIZE` | int | `65536` | Bytes to sample for compressibility (64KB) |
-| `COMPRESSION_SKIP_RATIO` | float | `0.90` | Skip if compressed/original >= this ratio |
-| `CHUNK_SERVICE_ADDR` | string | `chunk-svc:9003` | gRPC address of Chunk Engine |
-| `NATS_URL` | string | `nats://nats:4222` | NATS server URL |
+| Variable                         | Type   | Default            | Description                                |
+| -------------------------------- | ------ | ------------------ | ------------------------------------------ |
+| `COMPRESSION_WORKER_CONCURRENCY` | int    | `4`                | Number of parallel compression goroutines  |
+| `COMPRESSION_PROBE_SIZE`         | int    | `65536`            | Bytes to sample for compressibility (64KB) |
+| `COMPRESSION_SKIP_RATIO`         | float  | `0.90`             | Skip if compressed/original >= this ratio  |
+| `CHUNK_SERVICE_ADDR`             | string | `chunk-svc:9003`   | gRPC address of Chunk Engine               |
+| `NATS_URL`                       | string | `nats://nats:4222` | NATS server URL                            |
 
 ---
 
@@ -1176,30 +1188,30 @@ Manages the synchronization protocol between desktop clients and the server. Own
 
 #### Table: `devices`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Device identifier |
-| `user_id` | `UUID` | `NOT NULL, FK → users.id` | Owner |
-| `device_name` | `VARCHAR(255)` | `NOT NULL` | Human-readable name (e.g., "MacBook Pro") |
-| `os` | `VARCHAR(50)` | `NOT NULL` | Operating system (macOS, Windows, Linux) |
-| `sync_cursor` | `BIGINT` | `NOT NULL, DEFAULT 0` | Monotonic sequence: "I have seen all events up to N" |
-| `last_sync_at` | `TIMESTAMPTZ` | `NULL` | Last successful sync timestamp |
-| `registered_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Registration time |
-| `status` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'active'` | `active`, `revoked` |
+| Column          | Type           | Constraints                              | Description                                          |
+| --------------- | -------------- | ---------------------------------------- | ---------------------------------------------------- |
+| `id`            | `UUID`         | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Device identifier                                    |
+| `user_id`       | `UUID`         | `NOT NULL, FK → users.id`                | Owner                                                |
+| `device_name`   | `VARCHAR(255)` | `NOT NULL`                               | Human-readable name (e.g., "MacBook Pro")            |
+| `os`            | `VARCHAR(50)`  | `NOT NULL`                               | Operating system (macOS, Windows, Linux)             |
+| `sync_cursor`   | `BIGINT`       | `NOT NULL, DEFAULT 0`                    | Monotonic sequence: "I have seen all events up to N" |
+| `last_sync_at`  | `TIMESTAMPTZ`  | `NULL`                                   | Last successful sync timestamp                       |
+| `registered_at` | `TIMESTAMPTZ`  | `NOT NULL, DEFAULT NOW()`                | Registration time                                    |
+| `status`        | `VARCHAR(20)`  | `NOT NULL, DEFAULT 'active'`             | `active`, `revoked`                                  |
 
 #### Table: `sync_conflicts`
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Conflict record ID |
-| `file_id` | `UUID` | `NOT NULL` | The file with the conflict |
-| `device_id` | `UUID` | `NOT NULL, FK → devices.id` | Device that detected the conflict |
-| `server_version` | `INT` | `NOT NULL` | Server's version at conflict time |
-| `client_version` | `INT` | `NOT NULL` | Client's base version when editing |
-| `conflict_copy_path` | `TEXT` | `NOT NULL` | Path of the conflict copy created |
-| `resolution` | `VARCHAR(20)` | `NOT NULL, DEFAULT 'UNRESOLVED'` | `UNRESOLVED`, `KEEP_SERVER`, `KEEP_CLIENT`, `KEEP_BOTH` |
-| `resolved_at` | `TIMESTAMPTZ` | `NULL` | When resolved |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | When conflict was detected |
+| Column               | Type          | Constraints                              | Description                                             |
+| -------------------- | ------------- | ---------------------------------------- | ------------------------------------------------------- |
+| `id`                 | `UUID`        | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Conflict record ID                                      |
+| `file_id`            | `UUID`        | `NOT NULL`                               | The file with the conflict                              |
+| `device_id`          | `UUID`        | `NOT NULL, FK → devices.id`              | Device that detected the conflict                       |
+| `server_version`     | `INT`         | `NOT NULL`                               | Server's version at conflict time                       |
+| `client_version`     | `INT`         | `NOT NULL`                               | Client's base version when editing                      |
+| `conflict_copy_path` | `TEXT`        | `NOT NULL`                               | Path of the conflict copy created                       |
+| `resolution`         | `VARCHAR(20)` | `NOT NULL, DEFAULT 'UNRESOLVED'`         | `UNRESOLVED`, `KEEP_SERVER`, `KEEP_CLIENT`, `KEEP_BOTH` |
+| `resolved_at`        | `TIMESTAMPTZ` | `NULL`                                   | When resolved                                           |
+| `created_at`         | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()`                | When conflict was detected                              |
 
 ### gRPC RPCs
 
@@ -1248,6 +1260,7 @@ message ChangeEvent {
 ### Conflict Resolution Strategy (v1)
 
 **Fork-and-surface approach:**
+
 1. Conflict detected when: client's base version < server's current version AND client has local modifications.
 2. Create a conflict copy: `file.txt (conflict copy from DeviceName, YYYY-MM-DD).txt`.
 3. Upload the conflict copy as a new file.
@@ -1257,10 +1270,10 @@ message ChangeEvent {
 
 ### NATS Events
 
-| Direction | Subject | Details |
-|---|---|---|
-| Consume | `file.created`, `file.updated`, `file.deleted`, `file.moved`, `file.renamed` | Build sync cursor event log |
-| Publish | `sync.conflict` | `file_id, device_id, server_version, client_version, conflict_copy_path` |
+| Direction | Subject                                                                      | Details                                                                  |
+| --------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Consume   | `file.created`, `file.updated`, `file.deleted`, `file.moved`, `file.renamed` | Build sync cursor event log                                              |
+| Publish   | `sync.conflict`                                                              | `file_id, device_id, server_version, client_version, conflict_copy_path` |
 
 ---
 
@@ -1335,13 +1348,13 @@ message SearchResult {
 
 ### NATS Events Consumed
 
-| Subject | Action |
-|---|---|
-| `file.created` | Add to search index |
+| Subject        | Action                    |
+| -------------- | ------------------------- |
+| `file.created` | Add to search index       |
 | `file.updated` | Update search index entry |
-| `file.deleted` | Remove from search index |
-| `file.renamed` | Update name in index |
-| `file.moved` | Update path in index |
+| `file.deleted` | Remove from search index  |
+| `file.renamed` | Update name in index      |
+| `file.moved`   | Update path in index      |
 
 ---
 
@@ -1381,13 +1394,14 @@ message SendEmailResponse {
 
 #### Template: `email_verification`
 
-- **Subject:** "NimbusFS — Verify your email address"
+- **Subject:** "Errebus — Verify your email address"
 - **Variables:** `username`, `verification_link`, `expiry_hours`
 - **Body (plain text + HTML):**
+
   ```
   Hi {{username}},
 
-  Welcome to NimbusFS! Please verify your email address by clicking the link below:
+  Welcome to Errebus! Please verify your email address by clicking the link below:
 
   {{verification_link}}
 
@@ -1398,9 +1412,10 @@ message SendEmailResponse {
 
 #### Template: `password_reset`
 
-- **Subject:** "NimbusFS — Reset your password"
+- **Subject:** "Errebus — Reset your password"
 - **Variables:** `username`, `reset_link`, `expiry_minutes`
 - **Body:**
+
   ```
   Hi {{username}},
 
@@ -1416,22 +1431,24 @@ message SendEmailResponse {
 
 #### Template: `password_changed_notification`
 
-- **Subject:** "NimbusFS — Your password was changed"
+- **Subject:** "Errebus — Your password was changed"
 - **Variables:** `username`, `changed_at`, `ip_address`
 - **Body:**
+
   ```
   Hi {{username}},
 
-  Your NimbusFS password was changed on {{changed_at}}.
+  Your Errebus password was changed on {{changed_at}}.
 
   If you did not make this change, please contact your system administrator immediately.
   ```
 
 #### Template: `storage_quota_warning`
 
-- **Subject:** "NimbusFS — Storage quota warning"
+- **Subject:** "Errebus — Storage quota warning"
 - **Variables:** `username`, `used_percent`, `used_gb`, `total_gb`
 - **Body:**
+
   ```
   Hi {{username}},
 
@@ -1442,21 +1459,21 @@ message SendEmailResponse {
 
 ### SMTP Configuration
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `EMAIL_GRPC_PORT` | int | `9007` | gRPC listen port |
-| `SMTP_HOST` | string | *required* | SMTP server hostname (e.g., `smtp.gmail.com`) |
-| `SMTP_PORT` | int | `587` | SMTP server port (587 for STARTTLS, 465 for implicit TLS) |
-| `SMTP_USERNAME` | string | *required* | SMTP authentication username |
-| `SMTP_PASSWORD` | string | *required* | SMTP authentication password |
-| `SMTP_FROM_EMAIL` | string | *required* | Sender email address (e.g., `noreply@nimbus.example.com`) |
-| `SMTP_FROM_NAME` | string | `NimbusFS` | Sender display name |
-| `SMTP_TLS_MODE` | string | `starttls` | `starttls` (port 587) or `tls` (port 465) or `none` (port 25, dev only) |
-| `SMTP_CONNECTION_POOL_SIZE` | int | `5` | Number of persistent SMTP connections |
-| `SMTP_RETRY_COUNT` | int | `3` | Retries on transient SMTP errors |
-| `SMTP_RETRY_DELAY` | duration | `5s` | Delay between retries |
-| `EMAIL_BASE_URL` | string | *required* | Base URL for verification/reset links (e.g., `https://nimbus.example.com`) |
-| `OTEL_EXPORTER_ENDPOINT` | string | `otel-collector:4318` | OTEL collector address |
+| Variable                    | Type     | Default               | Description                                                                 |
+| --------------------------- | -------- | --------------------- | --------------------------------------------------------------------------- |
+| `EMAIL_GRPC_PORT`           | int      | `9007`                | gRPC listen port                                                            |
+| `SMTP_HOST`                 | string   | _required_            | SMTP server hostname (e.g., `smtp.gmail.com`)                               |
+| `SMTP_PORT`                 | int      | `587`                 | SMTP server port (587 for STARTTLS, 465 for implicit TLS)                   |
+| `SMTP_USERNAME`             | string   | _required_            | SMTP authentication username                                                |
+| `SMTP_PASSWORD`             | string   | _required_            | SMTP authentication password                                                |
+| `SMTP_FROM_EMAIL`           | string   | _required_            | Sender email address (e.g., `noreply@errebus.example.com`)                  |
+| `SMTP_FROM_NAME`            | string   | `Errebus`             | Sender display name                                                         |
+| `SMTP_TLS_MODE`             | string   | `starttls`            | `starttls` (port 587) or `tls` (port 465) or `none` (port 25, dev only)     |
+| `SMTP_CONNECTION_POOL_SIZE` | int      | `5`                   | Number of persistent SMTP connections                                       |
+| `SMTP_RETRY_COUNT`          | int      | `3`                   | Retries on transient SMTP errors                                            |
+| `SMTP_RETRY_DELAY`          | duration | `5s`                  | Delay between retries                                                       |
+| `EMAIL_BASE_URL`            | string   | _required_            | Base URL for verification/reset links (e.g., `https://errebus.example.com`) |
+| `OTEL_EXPORTER_ENDPOINT`    | string   | `otel-collector:4318` | OTEL collector address                                                      |
 
 ### Implementation Notes
 
@@ -1478,8 +1495,8 @@ message SendEmailResponse {
 Single JetStream stream capturing all subjects:
 
 ```
-Stream Name:    NIMBUS_EVENTS
-Subjects:       nimbus.>
+Stream Name:    ERREBUS_EVENTS
+Subjects:       errebus.>
 Retention:      WorkQueue (messages removed after ack)
 Max Age:        7 days
 Max Bytes:      10 GB
@@ -1491,29 +1508,29 @@ Storage:        File
 
 ### Complete Subject Registry
 
-| Subject | Publisher | Payload Fields |
-|---|---|---|
-| `file.created` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, name, size_bytes, mime_type, version, created_at` |
-| `file.updated` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, size_bytes, new_version, old_version, updated_at` |
-| `file.deleted` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, deleted_by, deleted_at` |
-| `file.moved` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, old_path, new_path, moved_at` |
-| `file.renamed` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, old_name, new_name, renamed_at` |
-| `file.restored` | Tier Manager | `event_id, event_type, timestamp, correlation_id, file_id, restore_job_id, restored_at` |
-| `chunk.stored` | Chunk Engine | `event_id, event_type, timestamp, correlation_id, chunk_id, size, tier, created_at` |
-| `chunk.compressed` | Compression Worker | `event_id, event_type, timestamp, correlation_id, chunk_id, algorithm, original_size, compressed_size, ratio` |
-| `chunk.tiered` | Tier Manager | `event_id, event_type, timestamp, correlation_id, chunk_id, old_tier, new_tier` |
-| `chunk.deleted` | Chunk Engine | `event_id, event_type, timestamp, correlation_id, chunk_id, reason` |
-| `tier.changed` | Tier Manager | `event_id, event_type, timestamp, correlation_id, chunk_id, old_tier, new_tier` |
-| `sync.conflict` | Sync Service | `event_id, event_type, timestamp, correlation_id, file_id, device_id, server_version, client_version, conflict_copy_path` |
-| `user.created` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, user_id, email, username` |
-| `user.verified` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, user_id` |
-| `user.password_changed` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, user_id` |
-| `user.suspended` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, user_id, suspended_by` |
-| `user.deleted` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, user_id, deleted_by` |
-| `acl.granted` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, file_id, grantee_user_id, permission_level, granted_by` |
-| `acl.revoked` | Auth/IAM Service | `event_id, event_type, timestamp, correlation_id, file_id, grantee_user_id, revoked_by` |
-| `share.created` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, token_id, permission_level, expiry, created_by` |
-| `share.revoked` | Metadata Service | `event_id, event_type, timestamp, correlation_id, file_id, token_id, revoked_by` |
+| Subject                 | Publisher          | Payload Fields                                                                                                               |
+| ----------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `file.created`          | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, name, size_bytes, mime_type, version, created_at` |
+| `file.updated`          | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, size_bytes, new_version, old_version, updated_at` |
+| `file.deleted`          | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, path, deleted_by, deleted_at`                           |
+| `file.moved`            | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, old_path, new_path, moved_at`                           |
+| `file.renamed`          | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, owner_id, old_name, new_name, renamed_at`                         |
+| `file.restored`         | Tier Manager       | `event_id, event_type, timestamp, correlation_id, file_id, restore_job_id, restored_at`                                      |
+| `chunk.stored`          | Chunk Engine       | `event_id, event_type, timestamp, correlation_id, chunk_id, size, tier, created_at`                                          |
+| `chunk.compressed`      | Compression Worker | `event_id, event_type, timestamp, correlation_id, chunk_id, algorithm, original_size, compressed_size, ratio`                |
+| `chunk.tiered`          | Tier Manager       | `event_id, event_type, timestamp, correlation_id, chunk_id, old_tier, new_tier`                                              |
+| `chunk.deleted`         | Chunk Engine       | `event_id, event_type, timestamp, correlation_id, chunk_id, reason`                                                          |
+| `tier.changed`          | Tier Manager       | `event_id, event_type, timestamp, correlation_id, chunk_id, old_tier, new_tier`                                              |
+| `sync.conflict`         | Sync Service       | `event_id, event_type, timestamp, correlation_id, file_id, device_id, server_version, client_version, conflict_copy_path`    |
+| `user.created`          | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, user_id, email, username`                                                  |
+| `user.verified`         | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, user_id`                                                                   |
+| `user.password_changed` | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, user_id`                                                                   |
+| `user.suspended`        | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, user_id, suspended_by`                                                     |
+| `user.deleted`          | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, user_id, deleted_by`                                                       |
+| `acl.granted`           | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, file_id, grantee_user_id, permission_level, granted_by`                    |
+| `acl.revoked`           | Auth/IAM Service   | `event_id, event_type, timestamp, correlation_id, file_id, grantee_user_id, revoked_by`                                      |
+| `share.created`         | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, token_id, permission_level, expiry, created_by`                   |
+| `share.revoked`         | Metadata Service   | `event_id, event_type, timestamp, correlation_id, file_id, token_id, revoked_by`                                             |
 
 ### Event Envelope (All Events)
 
@@ -1525,20 +1542,22 @@ Every event published to NATS includes these mandatory fields:
   "event_type": "string — matches NATS subject (e.g., file.created)",
   "timestamp": "RFC3339 — when the event was produced",
   "correlation_id": "UUID — links to OTel trace for distributed tracing",
-  "payload": { /* domain-specific fields */ }
+  "payload": {
+    /* domain-specific fields */
+  }
 }
 ```
 
 ### Consumer Configuration
 
-| Consumer Name | Subscribed Subjects | Type | Purpose |
-|---|---|---|---|
-| `search-indexer` | `file.created`, `file.updated`, `file.deleted`, `file.renamed`, `file.moved` | Pull, durable | Index files for search |
-| `compression-worker` | `chunk.stored` | Pull, durable | Compress newly stored chunks based on tier |
-| `tier-updater` | `chunk.stored` | Pull, durable | Register chunks in heat records |
-| `sync-event-log` | `file.*` | Pull, durable | Build event log for sync cursors |
-| `gateway-sse` | `file.*`, `sync.conflict`, `file.restored` | Push | Forward to SSE clients in real-time |
-| `audit-logger` | `acl.*`, `share.*`, `user.*` | Pull, durable | Audit trail logging |
+| Consumer Name        | Subscribed Subjects                                                          | Type          | Purpose                                    |
+| -------------------- | ---------------------------------------------------------------------------- | ------------- | ------------------------------------------ |
+| `search-indexer`     | `file.created`, `file.updated`, `file.deleted`, `file.renamed`, `file.moved` | Pull, durable | Index files for search                     |
+| `compression-worker` | `chunk.stored`                                                               | Pull, durable | Compress newly stored chunks based on tier |
+| `tier-updater`       | `chunk.stored`                                                               | Pull, durable | Register chunks in heat records            |
+| `sync-event-log`     | `file.*`                                                                     | Pull, durable | Build event log for sync cursors           |
+| `gateway-sse`        | `file.*`, `sync.conflict`, `file.restored`                                   | Push          | Forward to SSE clients in real-time        |
+| `audit-logger`       | `acl.*`, `share.*`, `user.*`                                                 | Pull, durable | Audit trail logging                        |
 
 ### Delivery Guarantees
 
@@ -1554,15 +1573,15 @@ Every event published to NATS includes these mandatory fields:
 
 ### Permission Levels (Cumulative)
 
-| Level | Name | Capabilities | Includes |
-|---|---|---|---|
-| 0 | None | No access | — |
-| 1 | Read | View file content, see metadata | — |
-| 2 | Write | Modify file content (upload new version) | — |
-| 3 | Read + Write | View and modify | Level 1 + 2 |
-| 4 | Download | Download file to local machine | Level 1 + 2 + 3 |
-| 5 | Share | Create share links, grant access to others | Level 1 + 2 + 3 + 4 |
-| Admin | System role | All permissions on all files, bypasses ACL entirely | — |
+| Level | Name         | Capabilities                                        | Includes            |
+| ----- | ------------ | --------------------------------------------------- | ------------------- |
+| 0     | None         | No access                                           | —                   |
+| 1     | Read         | View file content, see metadata                     | —                   |
+| 2     | Write        | Modify file content (upload new version)            | —                   |
+| 3     | Read + Write | View and modify                                     | Level 1 + 2         |
+| 4     | Download     | Download file to local machine                      | Level 1 + 2 + 3     |
+| 5     | Share        | Create share links, grant access to others          | Level 1 + 2 + 3 + 4 |
+| Admin | System role  | All permissions on all files, bypasses ACL entirely | —                   |
 
 ### Permission Check Algorithm
 
@@ -1592,19 +1611,19 @@ function CheckPermission(user_id, file_id, required_level):
 
 ### Required Permission Levels Per Operation
 
-| Operation | Required Level |
-|---|---|
-| View file metadata | 1 (Read) |
-| View file content | 1 (Read) |
-| List directory | 1 (Read) |
-| Upload new version | 2 (Write) |
-| Rename file | 2 (Write) |
-| Move file | 2 (Write) |
-| Download file | 4 (Download) |
-| Create share link | 5 (Share) |
-| Grant permission to another user | 5 (Share) |
-| Revoke permission | 5 (Share) or admin |
-| Delete file | Owner or admin only |
+| Operation                        | Required Level      |
+| -------------------------------- | ------------------- |
+| View file metadata               | 1 (Read)            |
+| View file content                | 1 (Read)            |
+| List directory                   | 1 (Read)            |
+| Upload new version               | 2 (Write)           |
+| Rename file                      | 2 (Write)           |
+| Move file                        | 2 (Write)           |
+| Download file                    | 4 (Download)        |
+| Create share link                | 5 (Share)           |
+| Grant permission to another user | 5 (Share)           |
+| Revoke permission                | 5 (Share) or admin  |
+| Delete file                      | Owner or admin only |
 
 ---
 
@@ -1613,7 +1632,7 @@ function CheckPermission(user_id, file_id, required_level):
 ### Share Token Flow (End to End)
 
 1. **Create:** Authenticated user with level 5 sends `POST /files/{file_id}/share`. Gateway calls `Metadata.CreateShareToken(file_id, permission_level, expiry)`.
-2. **Response:** Returns `{token_id, share_url}` where `share_url = https://nimbus.example.com/share/{token_id}`.
+2. **Response:** Returns `{token_id, share_url}` where `share_url = https://errebus.example.com/share/{token_id}`.
 3. **Access:** External user hits `GET /share/{token_id}`.
 4. Gateway detects `/share/` prefix → **skips JWT validation**.
 5. Gateway calls `Metadata.ResolveShareToken(token_id)` → returns `{file_id, permission_level, expiry, revoked_at}`.
@@ -1626,12 +1645,12 @@ function CheckPermission(user_id, file_id, required_level):
 
 ### API Routes
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/files/{file_id}/share` | Required (level 5) | Create a share link |
-| `GET` | `/share/{token_id}` | **None** | Access shared file |
-| `DELETE` | `/files/{file_id}/share/{token_id}` | Required (level 5) | Revoke a share link |
-| `GET` | `/files/{file_id}/shares` | Required (level 5) | List all share links for a file |
+| Method   | Path                                | Auth               | Description                     |
+| -------- | ----------------------------------- | ------------------ | ------------------------------- |
+| `POST`   | `/files/{file_id}/share`            | Required (level 5) | Create a share link             |
+| `GET`    | `/share/{token_id}`                 | **None**           | Access shared file              |
+| `DELETE` | `/files/{file_id}/share/{token_id}` | Required (level 5) | Revoke a share link             |
+| `GET`    | `/files/{file_id}/shares`           | Required (level 5) | List all share links for a file |
 
 ---
 
@@ -1663,7 +1682,7 @@ func (id ObjectID) StoragePath() string {
 ### CAS Namespace
 
 - **Scope:** Global CAS — single dedup pool across all users.
-- **Rationale:** NimbusFS is self-hosted for personal/organizational use; cross-user dedup is acceptable.
+- **Rationale:** Errebus is self-hosted for personal/organizational use; cross-user dedup is acceptable.
 - **Security note:** With global CAS, a user could theoretically detect whether another user stored the same file (instant upload = chunk exists). For single-organization deployments, this is acceptable.
 - **Future consideration:** If multi-tenant isolation is needed, add per-tenant encryption keys before hashing (breaks cross-tenant dedup but eliminates information leak).
 
@@ -1719,11 +1738,11 @@ Value: ChunkMeta {
 
 ## 19. Compression Strategy Per Tier
 
-| Tier | Algorithm | Compression Level | When Applied | Typical Ratio |
-|---|---|---|---|---|
-| Hot | None | — | — | 1:1 |
-| Warm | zstd | Level 1 (~500 MB/s) | On tier transition (hot → warm) | 2.5–3:1 |
-| Cold | zstd | Level 9 (~80 MB/s) | On tier transition (warm → cold) | 3.5–4:1 |
+| Tier | Algorithm | Compression Level   | When Applied                     | Typical Ratio |
+| ---- | --------- | ------------------- | -------------------------------- | ------------- |
+| Hot  | None      | —                   | —                                | 1:1           |
+| Warm | zstd      | Level 1 (~500 MB/s) | On tier transition (hot → warm)  | 2.5–3:1       |
+| Cold | zstd      | Level 9 (~80 MB/s)  | On tier transition (warm → cold) | 3.5–4:1       |
 
 ### Compressibility Detection (Two-Stage)
 
@@ -1740,18 +1759,18 @@ Each chunk's `ChunkMeta` records which compression algorithm was applied. On rea
 
 ### Tier Model
 
-| Tier | Storage Backend | Access Latency | Compression | Use Case |
-|---|---|---|---|---|
-| **Hot** | Local NVMe/SSD | Immediate (< 1ms) | None | Actively used files |
-| **Warm** | MinIO / S3-compatible | Seconds (~100ms–2s) | zstd level 1 | Infrequently accessed |
-| **Cold** | Deep archive (MinIO/B2) | Minutes to hours | zstd level 9 | Rarely accessed / archive |
+| Tier     | Storage Backend         | Access Latency      | Compression  | Use Case                  |
+| -------- | ----------------------- | ------------------- | ------------ | ------------------------- |
+| **Hot**  | Local NVMe/SSD          | Immediate (< 1ms)   | None         | Actively used files       |
+| **Warm** | MinIO / S3-compatible   | Seconds (~100ms–2s) | zstd level 1 | Infrequently accessed     |
+| **Cold** | Deep archive (MinIO/B2) | Minutes to hours    | zstd level 9 | Rarely accessed / archive |
 
 ### Transition Policy (Tiered Bucket Model)
 
 ```yaml
-hot_to_warm:   168h (7 days) without access
-warm_to_cold:  720h (30 days) without access
-min_size:      1 MB (don't tier tiny files)
+hot_to_warm: 168h (7 days) without access
+warm_to_cold: 720h (30 days) without access
+min_size: 1 MB (don't tier tiny files)
 ```
 
 ### Cold File Restore Flow
@@ -1802,10 +1821,10 @@ type ObjectMeta struct {
 
 ### Implementations
 
-| Backend | Tier | Implementation |
-|---|---|---|
-| `LocalBackend` | Hot | Local filesystem with atomic writes (temp file + rename) |
-| `MinIOBackend` | Warm, Cold | MinIO Go SDK (`minio/minio-go/v7`) |
+| Backend          | Tier         | Implementation                                                             |
+| ---------------- | ------------ | -------------------------------------------------------------------------- |
+| `LocalBackend`   | Hot          | Local filesystem with atomic writes (temp file + rename)                   |
+| `MinIOBackend`   | Warm, Cold   | MinIO Go SDK (`minio/minio-go/v7`)                                         |
 | `ArchiveBackend` | Cold (cloud) | Extends Backend with `InitiateRestore`/`RestoreStatus` for async retrieval |
 
 ### Optional Extension: MultipartUploader
@@ -1827,13 +1846,13 @@ Checked via type assertion: `if mp, ok := backend.(MultipartUploader); ok { ... 
 
 ### Verification Matrix
 
-| Stage | Check | Algorithm | When |
-|---|---|---|---|
-| After chunk write | Recompute hash, compare to ObjectID | BLAKE3 | Every write |
-| Read path (fast) | Verify stored CRC32C | CRC32C (~20 GB/s with HW) | Every read (configurable) |
-| Periodic scrub | Recompute full hash of all chunks | BLAKE3 | Weekly background job |
-| After tier migration | Verify hash at destination before deleting source | BLAKE3 | Every migration |
-| Upload finalization | Verify full file hash matches client-provided checksum | BLAKE3 | Every upload |
+| Stage                | Check                                                  | Algorithm                 | When                      |
+| -------------------- | ------------------------------------------------------ | ------------------------- | ------------------------- |
+| After chunk write    | Recompute hash, compare to ObjectID                    | BLAKE3                    | Every write               |
+| Read path (fast)     | Verify stored CRC32C                                   | CRC32C (~20 GB/s with HW) | Every read (configurable) |
+| Periodic scrub       | Recompute full hash of all chunks                      | BLAKE3                    | Weekly background job     |
+| After tier migration | Verify hash at destination before deleting source      | BLAKE3                    | Every migration           |
+| Upload finalization  | Verify full file hash matches client-provided checksum | BLAKE3                    | Every upload              |
 
 ### Scrubber
 
@@ -1864,7 +1883,7 @@ GET /api/v1/admin/integrity
 
 ### Snapshot Versioning
 
-NimbusFS stores **manifest snapshots** for each file version. Because chunks are deduplicated, each version only consumes storage for chunks that actually changed.
+Errebus stores **manifest snapshots** for each file version. Because chunks are deduplicated, each version only consumes storage for chunks that actually changed.
 
 - Default: keep **5 versions** per file.
 - Configurable per-path and per-file-type.
@@ -1891,19 +1910,20 @@ GET /api/v1/files/{id}/versions
 retention:
   default:
     keep_versions: 5
-    keep_daily_snapshots: 7        # one per day for 7 days
-    keep_weekly_snapshots: 4       # one per week for 4 weeks
-    keep_monthly_snapshots: 12     # one per month for 12 months
+    keep_daily_snapshots: 7 # one per day for 7 days
+    keep_weekly_snapshots: 4 # one per week for 4 weeks
+    keep_monthly_snapshots: 12 # one per month for 12 months
   per_path:
     - pattern: "**.xlsx"
-      keep_versions: 10            # finance files keep more versions
+      keep_versions: 10 # finance files keep more versions
     - pattern: "**.mp4"
-      keep_versions: 1             # videos — only latest
+      keep_versions: 1 # videos — only latest
 ```
 
 ### GC on Version Deletion
 
 When a version is deleted by retention policy:
+
 1. Decrement `RefCount` for all chunks in that version's manifest.
 2. Chunks with `RefCount = 0` are eligible for GC.
 3. GC is batched and runs as a background sweep.
@@ -2004,6 +2024,7 @@ CREATE TABLE chunk_upload_progress (
 ### Change Detection (Client)
 
 On each sync cycle:
+
 1. Walk filesystem under the sync directory.
 2. For each file: compare `mtime` and `size` against `local_files` table.
 3. If both unchanged → file unchanged (no re-hash needed).
@@ -2030,6 +2051,7 @@ On each sync cycle:
 **Conflict condition:** Client's base version < server's current version AND client has local modifications made while offline.
 
 **Resolution: Fork-and-surface**
+
 1. Keep the server version as canonical.
 2. Save client's version as: `filename (conflict copy from DeviceName, YYYY-MM-DD).extension`.
 3. Upload conflict copy as a new file.
@@ -2061,20 +2083,20 @@ On each sync cycle:
 
 ### Features (v1)
 
-| Feature | Description |
-|---|---|
-| **File browser** | Navigate directory tree, view files in grid/list mode |
-| **Upload** | Chunked parallel upload with resume support; progress persisted in SQLite |
-| **Download** | Stream response body directly to disk via reqwest — no RAM ceiling |
-| **Background sync** | Watch a configured sync folder; debounce filesystem events before syncing |
+| Feature                 | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| **File browser**        | Navigate directory tree, view files in grid/list mode                         |
+| **Upload**              | Chunked parallel upload with resume support; progress persisted in SQLite     |
+| **Download**            | Stream response body directly to disk via reqwest — no RAM ceiling            |
+| **Background sync**     | Watch a configured sync folder; debounce filesystem events before syncing     |
 | **Conflict resolution** | Display unresolved conflicts with Keep Server / Keep Mine / Keep Both options |
-| **Tier display** | Show which tier each file is on (hot/warm/cold icon) |
-| **Cold file restore** | Show restore progress indicator for cold files being retrieved |
-| **Upload progress** | Per-file and per-chunk upload progress bars |
-| **OS notifications** | Notify on: sync complete, conflict detected, restore ready, upload failed |
-| **Search** | Search files by name/path via Search Service API |
-| **Share links** | Create and manage share links for files (level 5 required) |
-| **Version history** | View version list with dedup statistics |
+| **Tier display**        | Show which tier each file is on (hot/warm/cold icon)                          |
+| **Cold file restore**   | Show restore progress indicator for cold files being retrieved                |
+| **Upload progress**     | Per-file and per-chunk upload progress bars                                   |
+| **OS notifications**    | Notify on: sync complete, conflict detected, restore ready, upload failed     |
+| **Search**              | Search files by name/path via Search Service API                              |
+| **Share links**         | Create and manage share links for files (level 5 required)                    |
+| **Version history**     | View version list with dedup statistics                                       |
 
 ### Features NOT in v1
 
@@ -2116,27 +2138,28 @@ On each sync cycle:
 
 ### Client ↔ Server Communication
 
-| Protocol | Direction | Use |
-|---|---|---|
+| Protocol             | Direction       | Use                                     |
+| -------------------- | --------------- | --------------------------------------- |
 | REST/JSON over HTTPS | Client → Server | All CRUD operations, uploads, downloads |
-| SSE | Server → Client | Real-time event notifications |
+| SSE                  | Server → Client | Real-time event notifications           |
 
 > **Note:** gRPC was considered for client↔server but REST is simpler; gRPC adds proto maintenance with no clear benefit at this scale.
 
 ### Configuration (Client-Side)
 
 Stored in platform-appropriate config directory:
-- macOS: `~/Library/Application Support/NimbusFS/config.toml`
-- Linux: `~/.config/nimbusfs/config.toml`
-- Windows: `%APPDATA%\NimbusFS\config.toml`
+
+- macOS: `~/Library/Application Support/Errebus/config.toml`
+- Linux: `~/.config/errebus/config.toml`
+- Windows: `%APPDATA%\Errebus\config.toml`
 
 ```toml
 [server]
-url = "https://nimbus.example.com"
+url = "https://errebus.example.com"
 
 [sync]
 enabled = true
-folder = "~/NimbusFS"
+folder = "~/Errebus"
 poll_interval_seconds = 30
 debounce_ms = 1000
 
@@ -2155,99 +2178,99 @@ view_mode = "list"    # "list" or "grid"
 
 ### Authentication Routes (No JWT required)
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/auth/register` | Register new user | `{email, username, password}` | `{user_id, message}` |
-| `GET` | `/auth/verify` | Verify email | Query param: `token` | `{message}` |
-| `POST` | `/auth/login` | Login | `{email, password, device_name?}` | `{access_token, refresh_token, user}` |
-| `POST` | `/auth/refresh` | Refresh access token | `{refresh_token}` | `{access_token, refresh_token}` |
-| `POST` | `/auth/forgot-password` | Request password reset | `{email}` | `{message}` |
-| `POST` | `/auth/reset-password` | Reset password with token | `{token, new_password}` | `{message}` |
+| Method | Path                    | Description               | Request Body                      | Response                              |
+| ------ | ----------------------- | ------------------------- | --------------------------------- | ------------------------------------- |
+| `POST` | `/auth/register`        | Register new user         | `{email, username, password}`     | `{user_id, message}`                  |
+| `GET`  | `/auth/verify`          | Verify email              | Query param: `token`              | `{message}`                           |
+| `POST` | `/auth/login`           | Login                     | `{email, password, device_name?}` | `{access_token, refresh_token, user}` |
+| `POST` | `/auth/refresh`         | Refresh access token      | `{refresh_token}`                 | `{access_token, refresh_token}`       |
+| `POST` | `/auth/forgot-password` | Request password reset    | `{email}`                         | `{message}`                           |
+| `POST` | `/auth/reset-password`  | Reset password with token | `{token, new_password}`           | `{message}`                           |
 
 ### Authenticated Routes (JWT required)
 
 #### User Management
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `GET` | `/auth/me` | Get current user profile | — | `User` |
-| `PUT` | `/auth/me` | Update profile | `{username?}` | `User` |
-| `POST` | `/auth/change-password` | Change password | `{current_password, new_password}` | `{message}` |
-| `POST` | `/auth/logout` | Logout (revoke refresh token) | `{refresh_token}` | `{message}` |
+| Method | Path                    | Description                   | Request Body                       | Response    |
+| ------ | ----------------------- | ----------------------------- | ---------------------------------- | ----------- |
+| `GET`  | `/auth/me`              | Get current user profile      | —                                  | `User`      |
+| `PUT`  | `/auth/me`              | Update profile                | `{username?}`                      | `User`      |
+| `POST` | `/auth/change-password` | Change password               | `{current_password, new_password}` | `{message}` |
+| `POST` | `/auth/logout`          | Logout (revoke refresh token) | `{refresh_token}`                  | `{message}` |
 
 #### File Operations
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/files` | Initiate file upload | `{parent_path, file_name, file_size, mime_type}` | `{upload_session_id, file_id, expected_chunk_count}` |
-| `POST` | `/files/{session_id}/finalize` | Finalize upload | `{chunks: [{chunk_id, index, size}], checksum}` | `{file_id, version, new_storage_bytes}` |
-| `POST` | `/files/{session_id}/abort` | Abort upload | — | `{message}` |
-| `GET` | `/files/{file_id}` | Get file metadata | — | `File` |
-| `GET` | `/files/{file_id}/download` | Download file | — | Binary stream |
-| `DELETE` | `/files/{file_id}` | Delete file | — | `{message}` |
-| `PUT` | `/files/{file_id}/rename` | Rename file | `{new_name}` | `File` |
-| `PUT` | `/files/{file_id}/move` | Move file | `{new_parent_path}` | `File` |
-| `GET` | `/files/{file_id}/restore-status` | Check cold file restore status | — | `{status, progress_pct, estimated_seconds}` |
+| Method   | Path                              | Description                    | Request Body                                     | Response                                             |
+| -------- | --------------------------------- | ------------------------------ | ------------------------------------------------ | ---------------------------------------------------- |
+| `POST`   | `/files`                          | Initiate file upload           | `{parent_path, file_name, file_size, mime_type}` | `{upload_session_id, file_id, expected_chunk_count}` |
+| `POST`   | `/files/{session_id}/finalize`    | Finalize upload                | `{chunks: [{chunk_id, index, size}], checksum}`  | `{file_id, version, new_storage_bytes}`              |
+| `POST`   | `/files/{session_id}/abort`       | Abort upload                   | —                                                | `{message}`                                          |
+| `GET`    | `/files/{file_id}`                | Get file metadata              | —                                                | `File`                                               |
+| `GET`    | `/files/{file_id}/download`       | Download file                  | —                                                | Binary stream                                        |
+| `DELETE` | `/files/{file_id}`                | Delete file                    | —                                                | `{message}`                                          |
+| `PUT`    | `/files/{file_id}/rename`         | Rename file                    | `{new_name}`                                     | `File`                                               |
+| `PUT`    | `/files/{file_id}/move`           | Move file                      | `{new_parent_path}`                              | `File`                                               |
+| `GET`    | `/files/{file_id}/restore-status` | Check cold file restore status | —                                                | `{status, progress_pct, estimated_seconds}`          |
 
 #### Directory Operations
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/directories` | Create directory | `{parent_path, name}` | `File` |
-| `GET` | `/directories` | List directory contents | Query: `path`, `page`, `page_size`, `sort_by`, `sort_order` | `{files: [File], total_count, page, page_size}` |
+| Method | Path           | Description             | Request Body                                                | Response                                        |
+| ------ | -------------- | ----------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| `POST` | `/directories` | Create directory        | `{parent_path, name}`                                       | `File`                                          |
+| `GET`  | `/directories` | List directory contents | Query: `path`, `page`, `page_size`, `sort_by`, `sort_order` | `{files: [File], total_count, page, page_size}` |
 
 #### Chunk Operations
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/chunks/negotiate` | Check which chunks exist | `{chunk_ids: [string]}` | `{missing: [string], existing: [string]}` |
-| `POST` | `/chunks` | Upload a chunk (streaming) | Binary stream with headers | `{chunk_id, already_existed}` |
-| `GET` | `/chunks/{chunk_id}` | Get chunk info | — | `{chunk_id, size, tier, exists}` |
+| Method | Path                 | Description                | Request Body               | Response                                  |
+| ------ | -------------------- | -------------------------- | -------------------------- | ----------------------------------------- |
+| `POST` | `/chunks/negotiate`  | Check which chunks exist   | `{chunk_ids: [string]}`    | `{missing: [string], existing: [string]}` |
+| `POST` | `/chunks`            | Upload a chunk (streaming) | Binary stream with headers | `{chunk_id, already_existed}`             |
+| `GET`  | `/chunks/{chunk_id}` | Get chunk info             | —                          | `{chunk_id, size, tier, exists}`          |
 
 #### Version Operations
 
-| Method | Path | Description | Response |
-|---|---|---|---|
-| `GET` | `/files/{file_id}/versions` | List versions with dedup stats | `{versions: [VersionSummary], total_unique_storage_mb, savings_vs_full_copies_mb}` |
-| `GET` | `/files/{file_id}/versions/{version}` | Get specific version metadata | `VersionSummary` |
-| `POST` | `/files/{file_id}/versions/{version}/restore` | Restore old version as current | `{file_id, new_version}` |
+| Method | Path                                          | Description                    | Response                                                                           |
+| ------ | --------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------- |
+| `GET`  | `/files/{file_id}/versions`                   | List versions with dedup stats | `{versions: [VersionSummary], total_unique_storage_mb, savings_vs_full_copies_mb}` |
+| `GET`  | `/files/{file_id}/versions/{version}`         | Get specific version metadata  | `VersionSummary`                                                                   |
+| `POST` | `/files/{file_id}/versions/{version}/restore` | Restore old version as current | `{file_id, new_version}`                                                           |
 
 #### Share Operations
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/files/{file_id}/share` | Create share link | `{permission_level, expiry?}` | `{token_id, share_url}` |
-| `GET` | `/files/{file_id}/shares` | List share links | — | `{tokens: [ShareToken]}` |
-| `DELETE` | `/files/{file_id}/share/{token_id}` | Revoke share link | — | `{message}` |
+| Method   | Path                                | Description       | Request Body                  | Response                 |
+| -------- | ----------------------------------- | ----------------- | ----------------------------- | ------------------------ |
+| `POST`   | `/files/{file_id}/share`            | Create share link | `{permission_level, expiry?}` | `{token_id, share_url}`  |
+| `GET`    | `/files/{file_id}/shares`           | List share links  | —                             | `{tokens: [ShareToken]}` |
+| `DELETE` | `/files/{file_id}/share/{token_id}` | Revoke share link | —                             | `{message}`              |
 
 #### Public Share Route (No Auth)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/share/{token_id}` | Access shared file (served as minimal HTML page or direct download) |
+| Method | Path                | Description                                                         |
+| ------ | ------------------- | ------------------------------------------------------------------- |
+| `GET`  | `/share/{token_id}` | Access shared file (served as minimal HTML page or direct download) |
 
 #### Search
 
-| Method | Path | Description | Query Params | Response |
-|---|---|---|---|---|
-| `GET` | `/search` | Search files | `q`, `mime_type`, `page`, `page_size`, `sort_by`, `sort_order` | `{results: [SearchResult], total_count}` |
+| Method | Path      | Description  | Query Params                                                   | Response                                 |
+| ------ | --------- | ------------ | -------------------------------------------------------------- | ---------------------------------------- |
+| `GET`  | `/search` | Search files | `q`, `mime_type`, `page`, `page_size`, `sort_by`, `sort_order` | `{results: [SearchResult], total_count}` |
 
 #### Sync Operations
 
-| Method | Path | Description | Request Body | Response |
-|---|---|---|---|---|
-| `POST` | `/devices` | Register a device | `{device_name, os}` | `{device_id}` |
-| `GET` | `/devices` | List user's devices | — | `{devices: [Device]}` |
-| `DELETE` | `/devices/{device_id}` | Revoke a device | — | `{message}` |
-| `GET` | `/sync/changes` | Get changes since cursor | Query: `device_id`, `since_cursor` | `{changes: [ChangeEvent], new_cursor}` |
-| `GET` | `/sync/conflicts` | List unresolved conflicts | — | `{conflicts: [Conflict]}` |
-| `POST` | `/sync/conflicts/{conflict_id}/resolve` | Resolve a conflict | `{resolution: "KEEP_SERVER" \| "KEEP_CLIENT" \| "KEEP_BOTH"}` | `{message}` |
+| Method   | Path                                    | Description               | Request Body                                                  | Response                               |
+| -------- | --------------------------------------- | ------------------------- | ------------------------------------------------------------- | -------------------------------------- |
+| `POST`   | `/devices`                              | Register a device         | `{device_name, os}`                                           | `{device_id}`                          |
+| `GET`    | `/devices`                              | List user's devices       | —                                                             | `{devices: [Device]}`                  |
+| `DELETE` | `/devices/{device_id}`                  | Revoke a device           | —                                                             | `{message}`                            |
+| `GET`    | `/sync/changes`                         | Get changes since cursor  | Query: `device_id`, `since_cursor`                            | `{changes: [ChangeEvent], new_cursor}` |
+| `GET`    | `/sync/conflicts`                       | List unresolved conflicts | —                                                             | `{conflicts: [Conflict]}`              |
+| `POST`   | `/sync/conflicts/{conflict_id}/resolve` | Resolve a conflict        | `{resolution: "KEEP_SERVER" \| "KEEP_CLIENT" \| "KEEP_BOTH"}` | `{message}`                            |
 
 #### SSE (Real-Time Events)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/events` | SSE stream of real-time events (filtered by user) |
+| Method | Path      | Description                                       |
+| ------ | --------- | ------------------------------------------------- |
+| `GET`  | `/events` | SSE stream of real-time events (filtered by user) |
 
 **SSE Event Format:**
 
@@ -2264,17 +2287,17 @@ data: {"file_id": "...", "restore_job_id": "..."}
 
 #### Admin Routes (Admin role required)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/admin/users` | List all users |
-| `PUT` | `/admin/users/{user_id}/quota` | Update user storage quota |
-| `POST` | `/admin/users/{user_id}/suspend` | Suspend a user |
-| `DELETE` | `/admin/users/{user_id}` | Delete a user |
-| `GET` | `/admin/integrity` | Get integrity scrub status |
-| `POST` | `/admin/integrity/scrub` | Trigger a manual integrity scrub |
-| `GET` | `/admin/tier/stats` | Get tier distribution statistics |
-| `PUT` | `/admin/tier/policy` | Update tier transition policy |
-| `POST` | `/admin/gc` | Trigger manual garbage collection |
+| Method   | Path                             | Description                       |
+| -------- | -------------------------------- | --------------------------------- |
+| `GET`    | `/admin/users`                   | List all users                    |
+| `PUT`    | `/admin/users/{user_id}/quota`   | Update user storage quota         |
+| `POST`   | `/admin/users/{user_id}/suspend` | Suspend a user                    |
+| `DELETE` | `/admin/users/{user_id}`         | Delete a user                     |
+| `GET`    | `/admin/integrity`               | Get integrity scrub status        |
+| `POST`   | `/admin/integrity/scrub`         | Trigger a manual integrity scrub  |
+| `GET`    | `/admin/tier/stats`              | Get tier distribution statistics  |
+| `PUT`    | `/admin/tier/policy`             | Update tier transition policy     |
+| `POST`   | `/admin/gc`                      | Trigger manual garbage collection |
 
 ### Response Data Types
 
@@ -2343,7 +2366,7 @@ data: {"file_id": "...", "restore_job_id": "..."}
   "created_at": "RFC3339",
   "revoked_at": "RFC3339 | null",
   "access_count": 42,
-  "share_url": "https://nimbus.example.com/share/{token_id}"
+  "share_url": "https://errebus.example.com/share/{token_id}"
 }
 ```
 
@@ -2390,16 +2413,16 @@ All errors follow a consistent format:
 }
 ```
 
-| HTTP Status | gRPC Code | Meaning |
-|---|---|---|
-| 400 | `INVALID_ARGUMENT` | Malformed request |
-| 401 | `UNAUTHENTICATED` | Missing or invalid JWT |
-| 403 | `PERMISSION_DENIED` | Insufficient permissions |
-| 404 | `NOT_FOUND` | Resource not found |
-| 409 | `ALREADY_EXISTS` | Duplicate resource |
-| 429 | `RESOURCE_EXHAUSTED` | Rate limit exceeded |
-| 500 | `INTERNAL` | Server error |
-| 503 | `UNAVAILABLE` | Service temporarily unavailable |
+| HTTP Status | gRPC Code            | Meaning                         |
+| ----------- | -------------------- | ------------------------------- |
+| 400         | `INVALID_ARGUMENT`   | Malformed request               |
+| 401         | `UNAUTHENTICATED`    | Missing or invalid JWT          |
+| 403         | `PERMISSION_DENIED`  | Insufficient permissions        |
+| 404         | `NOT_FOUND`          | Resource not found              |
+| 409         | `ALREADY_EXISTS`     | Duplicate resource              |
+| 429         | `RESOURCE_EXHAUSTED` | Rate limit exceeded             |
+| 500         | `INTERNAL`           | Server error                    |
+| 503         | `UNAVAILABLE`        | Service temporarily unavailable |
 
 ---
 
@@ -2407,11 +2430,11 @@ All errors follow a consistent format:
 
 ### Three Pillars
 
-| Pillar | Tool | What It Captures |
-|---|---|---|
-| **Traces** | Jaeger (via OTEL) | Full request path across all services |
-| **Metrics** | Prometheus (via OTEL) | Aggregate signals: latency, throughput, error rates |
-| **Logs** | Structured JSON (stdout) | Point-in-time details per service |
+| Pillar      | Tool                     | What It Captures                                    |
+| ----------- | ------------------------ | --------------------------------------------------- |
+| **Traces**  | Jaeger (via OTEL)        | Full request path across all services               |
+| **Metrics** | Prometheus (via OTEL)    | Aggregate signals: latency, throughput, error rates |
+| **Logs**    | Structured JSON (stdout) | Point-in-time details per service                   |
 
 ### Trace Context Propagation
 
@@ -2435,18 +2458,18 @@ All errors follow a consistent format:
 
 ### Key Metrics
 
-| Metric | Type | Labels |
-|---|---|---|
-| `nimbus_request_duration_seconds` | Histogram | `service`, `method`, `status_code` |
-| `nimbus_request_total` | Counter | `service`, `method`, `status_code` |
-| `nimbus_chunk_stored_bytes_total` | Counter | `tier` |
-| `nimbus_chunk_retrieved_bytes_total` | Counter | `tier` |
-| `nimbus_nats_consumer_lag` | Gauge | `consumer_name` |
-| `nimbus_tier_migration_queue_depth` | Gauge | `source_tier`, `target_tier` |
-| `nimbus_active_uploads` | Gauge | — |
-| `nimbus_storage_used_bytes` | Gauge | `tier` |
-| `nimbus_users_total` | Gauge | `status` |
-| `nimbus_scrub_corruptions_total` | Counter | — |
+| Metric                                | Type      | Labels                             |
+| ------------------------------------- | --------- | ---------------------------------- |
+| `errebus_request_duration_seconds`    | Histogram | `service`, `method`, `status_code` |
+| `errebus_request_total`               | Counter   | `service`, `method`, `status_code` |
+| `errebus_chunk_stored_bytes_total`    | Counter   | `tier`                             |
+| `errebus_chunk_retrieved_bytes_total` | Counter   | `tier`                             |
+| `errebus_nats_consumer_lag`           | Gauge     | `consumer_name`                    |
+| `errebus_tier_migration_queue_depth`  | Gauge     | `source_tier`, `target_tier`       |
+| `errebus_active_uploads`              | Gauge     | —                                  |
+| `errebus_storage_used_bytes`          | Gauge     | `tier`                             |
+| `errebus_users_total`                 | Gauge     | `status`                           |
+| `errebus_scrub_corruptions_total`     | Counter   | —                                  |
 
 ### Dashboard Essentials
 
@@ -2494,22 +2517,22 @@ All 9 services + infrastructure run with `docker compose up`.
 
 ### Services
 
-| Service | Image | Port(s) | Depends On |
-|---|---|---|---|
-| `nats` | `nats:2.10-alpine` | `4222`, `8222` (monitoring) | — |
-| `postgres` | `postgres:16-alpine` | `5432` | — |
-| `otel-collector` | `otel/opentelemetry-collector-contrib` | `4317`, `4318` | — |
-| `jaeger` | `jaegertracing/all-in-one` | `16686` (UI), `14268` | `otel-collector` |
-| `minio` | `minio/minio` | `9000`, `9001` (console) | — |
-| `auth-svc` | Built from `cmd/auth-svc` | `9001` | `postgres`, `nats` |
-| `email-svc` | Built from `cmd/email-svc` | `9007` | — |
-| `metadata-svc` | Built from `cmd/metadata-svc` | `9002` | `postgres`, `nats`, `auth-svc` |
-| `chunk-svc` | Built from `cmd/chunk-svc` | `9003` | `nats`, `minio` |
-| `tier-svc` | Built from `cmd/tier-svc` | `9006` | `postgres`, `nats`, `chunk-svc` |
-| `compression-worker` | Built from `cmd/compression-worker` | — (no port) | `nats`, `chunk-svc` |
-| `sync-svc` | Built from `cmd/sync-svc` | `9004` | `postgres`, `nats`, `metadata-svc` |
-| `search-svc` | Built from `cmd/search-svc` | `9005` | `nats`, `metadata-svc` |
-| `gateway` | Built from `cmd/gateway` | `8080` | All services |
+| Service              | Image                                  | Port(s)                     | Depends On                         |
+| -------------------- | -------------------------------------- | --------------------------- | ---------------------------------- |
+| `nats`               | `nats:2.10-alpine`                     | `4222`, `8222` (monitoring) | —                                  |
+| `postgres`           | `postgres:16-alpine`                   | `5432`                      | —                                  |
+| `otel-collector`     | `otel/opentelemetry-collector-contrib` | `4317`, `4318`              | —                                  |
+| `jaeger`             | `jaegertracing/all-in-one`             | `16686` (UI), `14268`       | `otel-collector`                   |
+| `minio`              | `minio/minio`                          | `9000`, `9001` (console)    | —                                  |
+| `auth-svc`           | Built from `cmd/auth-svc`              | `9001`                      | `postgres`, `nats`                 |
+| `email-svc`          | Built from `cmd/email-svc`             | `9007`                      | —                                  |
+| `metadata-svc`       | Built from `cmd/metadata-svc`          | `9002`                      | `postgres`, `nats`, `auth-svc`     |
+| `chunk-svc`          | Built from `cmd/chunk-svc`             | `9003`                      | `nats`, `minio`                    |
+| `tier-svc`           | Built from `cmd/tier-svc`              | `9006`                      | `postgres`, `nats`, `chunk-svc`    |
+| `compression-worker` | Built from `cmd/compression-worker`    | — (no port)                 | `nats`, `chunk-svc`                |
+| `sync-svc`           | Built from `cmd/sync-svc`              | `9004`                      | `postgres`, `nats`, `metadata-svc` |
+| `search-svc`         | Built from `cmd/search-svc`            | `9005`                      | `nats`, `metadata-svc`             |
+| `gateway`            | Built from `cmd/gateway`               | `8080`                      | All services                       |
 
 ### Key Principles
 
@@ -2522,30 +2545,30 @@ All 9 services + infrastructure run with `docker compose up`.
 
 ## 32. Resolved Design Decisions
 
-| Decision | Chosen | Rejected | Why |
-|---|---|---|---|
-| Message broker | NATS JetStream | Kafka | Simpler to self-host (single binary), at-least-once, embedded |
-| Proto tooling | buf | Raw protoc | Lint, breaking-change detection, catches accidents |
-| CAS hash | BLAKE3 | SHA-256 | 3–4× faster, same security properties |
-| Chunk addressing | Content-addressed | Path-addressed | Enables dedup, immutability, cache-friendliness |
-| Chunking algorithm | FastCDC (variable) | Fixed-size | Boundary-shift resilience, 10× faster than Rabin |
-| Chunk manifest ownership | Metadata Service | Chunk Engine | Metadata needs manifests for reads — avoids cross-service hop |
-| Client-side chunking | Client splits and hashes | Server-side | Client-side dedup check: server never receives existing data |
-| gRPC upload streaming | Client-streaming | Single unary | Files > 4MB need backpressure and partial failure recovery |
-| Sync conflict (v1) | Fork-and-surface | Last-write-wins / three-way merge | LWW silently loses data; three-way merge is complex |
-| Rate limiting unit | Per user ID | Per IP | Throttles heavy users without punishing NAT users |
-| Permission model | Cumulative ordinal 0–5 | Flat bitmask | Clean UX, natural hierarchy, easy `>=` comparison |
-| Share token storage | Metadata Service | Auth/IAM | Share tokens are file accessibility, not user identity |
-| Version strategy | CAS + CDC snapshot manifests | Binary delta storage | Delta saves only ~6% more on ~30% of file types; 11 weeks of engineering vs 4 weeks |
-| Client ↔ server protocol | REST/JSON + SSE | gRPC | Simpler for Rust client; gRPC adds proto maintenance overhead |
-| Real-time updates | SSE (Server-Sent Events) | WebSocket | Unidirectional is sufficient; avoids WebSocket complexity |
-| Desktop framework | iced (Rust) | Tauri, Electron | Native Rust, no embedded browser overhead |
-| Web frontend | None (v1) | React + TypeScript | Desktop covers full use case for self-hosted; deferred |
-| S3 API | None (v1) | S3-compatible endpoint | Deferred; clean REST API first |
-| Local dev | Docker Compose | Kubernetes | Compose is simpler and sufficient for dev |
-| Production deployment (v1) | Single binary + Compose | Kubernetes | Matches self-hosted audience |
-| Compression on write vs transition | On tier transition | On initial write | Simplifies write path; tier policy engine handles uniformly |
-| Cold restore | 202 Accepted + polling | Synchronous block | Users shouldn't wait minutes; async with progress |
-| CAS scope | Global (cross-user) | Per-tenant | Self-hosted for one org; cross-user dedup is acceptable |
-| Dedup index (single-node) | BadgerDB v4 | Redis, etcd | Single-node; BadgerDB is embedded, no external dependency |
-| Email system | SMTP via Go net/smtp | External service (SendGrid, etc.) | Self-hosted; no external dependency; SMTP is universal |
+| Decision                           | Chosen                       | Rejected                          | Why                                                                                 |
+| ---------------------------------- | ---------------------------- | --------------------------------- | ----------------------------------------------------------------------------------- |
+| Message broker                     | NATS JetStream               | Kafka                             | Simpler to self-host (single binary), at-least-once, embedded                       |
+| Proto tooling                      | buf                          | Raw protoc                        | Lint, breaking-change detection, catches accidents                                  |
+| CAS hash                           | BLAKE3                       | SHA-256                           | 3–4× faster, same security properties                                               |
+| Chunk addressing                   | Content-addressed            | Path-addressed                    | Enables dedup, immutability, cache-friendliness                                     |
+| Chunking algorithm                 | FastCDC (variable)           | Fixed-size                        | Boundary-shift resilience, 10× faster than Rabin                                    |
+| Chunk manifest ownership           | Metadata Service             | Chunk Engine                      | Metadata needs manifests for reads — avoids cross-service hop                       |
+| Client-side chunking               | Client splits and hashes     | Server-side                       | Client-side dedup check: server never receives existing data                        |
+| gRPC upload streaming              | Client-streaming             | Single unary                      | Files > 4MB need backpressure and partial failure recovery                          |
+| Sync conflict (v1)                 | Fork-and-surface             | Last-write-wins / three-way merge | LWW silently loses data; three-way merge is complex                                 |
+| Rate limiting unit                 | Per user ID                  | Per IP                            | Throttles heavy users without punishing NAT users                                   |
+| Permission model                   | Cumulative ordinal 0–5       | Flat bitmask                      | Clean UX, natural hierarchy, easy `>=` comparison                                   |
+| Share token storage                | Metadata Service             | Auth/IAM                          | Share tokens are file accessibility, not user identity                              |
+| Version strategy                   | CAS + CDC snapshot manifests | Binary delta storage              | Delta saves only ~6% more on ~30% of file types; 11 weeks of engineering vs 4 weeks |
+| Client ↔ server protocol           | REST/JSON + SSE              | gRPC                              | Simpler for Rust client; gRPC adds proto maintenance overhead                       |
+| Real-time updates                  | SSE (Server-Sent Events)     | WebSocket                         | Unidirectional is sufficient; avoids WebSocket complexity                           |
+| Desktop framework                  | iced (Rust)                  | Tauri, Electron                   | Native Rust, no embedded browser overhead                                           |
+| Web frontend                       | None (v1)                    | React + TypeScript                | Desktop covers full use case for self-hosted; deferred                              |
+| S3 API                             | None (v1)                    | S3-compatible endpoint            | Deferred; clean REST API first                                                      |
+| Local dev                          | Docker Compose               | Kubernetes                        | Compose is simpler and sufficient for dev                                           |
+| Production deployment (v1)         | Single binary + Compose      | Kubernetes                        | Matches self-hosted audience                                                        |
+| Compression on write vs transition | On tier transition           | On initial write                  | Simplifies write path; tier policy engine handles uniformly                         |
+| Cold restore                       | 202 Accepted + polling       | Synchronous block                 | Users shouldn't wait minutes; async with progress                                   |
+| CAS scope                          | Global (cross-user)          | Per-tenant                        | Self-hosted for one org; cross-user dedup is acceptable                             |
+| Dedup index (single-node)          | BadgerDB v4                  | Redis, etcd                       | Single-node; BadgerDB is embedded, no external dependency                           |
+| Email system                       | SMTP via Go net/smtp         | External service (SendGrid, etc.) | Self-hosted; no external dependency; SMTP is universal                              |
